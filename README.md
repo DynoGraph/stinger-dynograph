@@ -51,10 +51,10 @@ Below is a summary of the graph structures and statistics.
 
 | | Vertices | Edges | Edge Blocks | Empty Edge Blocks | Fragmented Edge Blocks | Edge Block Fill % | Avg. Edges per Block | 
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| PGPgiantcompo | 10680 | 24316 | 15939 | 3660 | 7426 | 21.8 | 3.96 |
-| cond-mat-2003 | 30460 | 120029 | 51525 | 11890 | 30941 | 33.3 | 6.06 |
-| coAuthorsDBLP | 299067 | 977676 | 475650 | 109124 | 270332 | 29.4 | 5.33 |
-| ny_sandy | 44062 | 77348 | 72717 | 27947 | 1628 | 7.6 | 1.72 |
+| `PGPgiantcompo` | 10680 | 24316 | 15939 | 3660 | 7426 | 21.8 | 3.96 |
+| `cond-mat-2003` | 30460 | 120029 | 51525 | 11890 | 30941 | 33.3 | 6.06 |
+| `coAuthorsDBLP` | 299067 | 977676 | 475650 | 109124 | 270332 | 29.4 | 5.33 |
+| `ny_sandy` | 44062 | 77348 | 72717 | 27947 | 1628 | 7.6 | 1.72 |
 
 We do anticipate releasing scripts that allow generation of more versions of each of these input files with different deletion factors, and eventually there will be scripts provided to convert new data sets as GraphBench inputs.
 
