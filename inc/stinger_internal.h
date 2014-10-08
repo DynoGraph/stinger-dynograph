@@ -103,6 +103,7 @@ struct stinger_eb
   int64_t high;		    /**< High water mark */
   int64_t smallStamp;	    /**< Smallest timestamp in the block */
   int64_t largeStamp;	    /**< Largest timestamp in the block */
+  int64_t cache_pad;       /**< Does not do anything -- for performance reasons only */
   struct stinger_edge edges[STINGER_EDGEBLOCKSIZE]; /**< Array of edges */
 };
 
