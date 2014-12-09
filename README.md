@@ -1,9 +1,9 @@
-# GraphBench
+# DynoGraph
 
 > (c) 2014 Georgia Tech Research Institute
 > Released under GPL v3.0.  See LICENSE for full details
 
-GraphBench is a suite of benchmarks centered
+DynoGraph is a suite of benchmarks centered
 around streaming graph analytics. With the prevalence of
 social media and the need to process real-time network graphs,
 streaming dynamic graphs have become a very important application.
