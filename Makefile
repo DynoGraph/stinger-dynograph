@@ -17,7 +17,7 @@ all: $(OBJ_DIR) libstinger.a benchmarks
 $(OBJ_DIR):
 	mkdir $(OBJ_DIR)
 
-benchmarks: bfs components pagerank edgestream
+benchmarks: bfs bfs_direction_optimizing components pagerank edgestream
 
 $(OBJ_DIR)/xmalloc.o: $(SRC_DIR)/lib/xmalloc.c $(HEADERS)
 	$(CC) $(CFLAGS) -o $@ -c $<
@@ -45,6 +45,9 @@ libstinger.a: $(STINGER_OBJ)
 
 bfs: $(SRC_DIR)/bfs/main.c $(HEADERS) libstinger.a  
 	$(CC) $(CFLAGS) -o bfs $< libstinger.a
+
+bfs_direction_optimizing: $(SRC_DIR)/bfs_direction_optimizing/main.c $(HEADERS) libstinger.a  
+	$(CC) $(CFLAGS) -o bfs_do $< libstinger.a
 
 components: $(SRC_DIR)/components/main.c $(HEADERS) libstinger.a 
 	$(CC) $(CFLAGS) -o components $< libstinger.a
