@@ -136,6 +136,7 @@ struct stinger
   uint64_t ETA_start;
   uint64_t ebpool_start;
   size_t length;
+  uint64_t cache_pad;       /**< Does not do anything -- for performance reasons only */
   uint8_t storage[0];
 };
 
