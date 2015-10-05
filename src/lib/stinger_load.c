@@ -28,6 +28,22 @@
 #include "hooks.h"
 
 int
+load_raw_benchmark_data_into_stinger(stinger_t * S, char * filename)
+{
+    FILE* in = fopen(filename, "rb");
+    size_t size;
+    fread(&size, sizeof(size_t), 1, in);
+    S = malloc(size);
+    if (!fread(S, sizeof(stinger_t), 1, in))
+    {
+        printf("Failed to load raw graph! Possible STINGER version mismatch.");
+        return -1;
+    }
+    fclose(in);
+    return 0;
+}
+
+int
 load_benchmark_data_into_stinger (stinger_t * S, char * filename, char hooks)
 {
   int64_t type = 0;

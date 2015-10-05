@@ -81,7 +81,7 @@ main (int argc, char ** argv)
   stinger_t * S = stinger_new();
 
   /* insert your data now */
-  load_benchmark_data_into_stinger (S, argv[1],0);
+  load_raw_benchmark_data_into_stinger (S, argv[1]);
 
 
   int64_t source_vertex = 3;

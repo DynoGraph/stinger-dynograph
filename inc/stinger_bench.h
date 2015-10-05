@@ -27,6 +27,7 @@
 #include "stinger.h"
 
 int load_benchmark_data_into_stinger (stinger_t * S, char * filename, char hooks);
+int load_raw_benchmark_data_into_stinger (stinger_t * S, char * filename);
 int print_fragmentation_stats (stinger_t * S, int64_t nv);
 
 #endif /* __STINGER_BENCH_H_ */

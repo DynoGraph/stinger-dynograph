@@ -12,7 +12,7 @@ _HEADERS = stinger_atomics.h stinger_bench.h stinger_defs.h stinger.h stinger_in
 HEADERS = $(patsubst %, $(INC_DIR)/%, $(_HEADERS))
 
 
-all: $(OBJ_DIR) libstinger.a benchmarks
+all: $(OBJ_DIR) libstinger.a benchmarks convert_raw
 
 $(OBJ_DIR):
 	mkdir $(OBJ_DIR)
@@ -57,6 +57,9 @@ pagerank: $(SRC_DIR)/pagerank/main.c $(HEADERS) libstinger.a
 
 edgestream: $(SRC_DIR)/edge_stream/main.c $(HEADERS) libstinger.a
 	$(CC) $(CFLAGS) -o edge_stream $< libstinger.a
+
+convert_raw: $(SRC_DIR)/convert_raw/main.c $(HEADERS) libstinger.a
+	$(CC) $(CFLAGS) -o convert_raw $< libstinger.a
 
 .PHONY: clean
 
