@@ -279,13 +279,13 @@ stinger_max_active_vertex(const struct stinger * S) {
     OMP("omp for")
     for(uint64_t i = 0; i < (S->max_nv); i++) {
       if((stinger_indegree_get(S, i) > 0 || stinger_outdegree_get(S, i) > 0) && 
-	i > local_max) {
-	local_max = i;
+        i > local_max) {
+        local_max = i;
       }
     }
     OMP("omp critical") {
       if(local_max > out)
-	out = local_max;
+        out = local_max;
     }
   }
   return out;
@@ -428,6 +428,44 @@ stinger_graph_size (const struct stinger *S)
   int64_t result = (num_edgeblocks * size_edgeblock) + vertices_size;
 
   return result;
+}
+
+/**
+* @brief Calculates the required memory to allocate a STINGER given a set of parameters
+*
+* @param nv Number of vertices
+* @param nebs Number of edge blocks
+* @param netypes Number of edge types
+* @param netypes Number of vertex types
+*
+* @return The STINGER size and start points for each sub-structure
+*/
+struct stinger_size_t calculate_stinger_size(int64_t nv, int64_t nebs, int64_t netypes, int64_t nvtypes) {
+  struct stinger_size_t ret;
+
+  uint64_t sz = 0;
+
+  ret.vertices_start = 0;
+  sz += stinger_vertices_size(nv);
+
+  ret.physmap_start = sz;
+  sz += stinger_physmap_size(nv);
+
+  ret.ebpool_start = sz;
+  sz += netypes * stinger_ebpool_size(nebs);
+
+  ret.etype_names_start = sz;
+  sz += stinger_names_size(netypes);
+
+  ret.vtype_names_start = sz;
+  sz += stinger_names_size(nvtypes);
+
+  ret.ETA_start = sz;
+  sz += netypes * stinger_etype_array_size(nebs);
+
+  ret.size = sz;
+
+  return ret;
 }
 
 void
@@ -666,80 +704,57 @@ stinger_etype_array_size(int64_t nebs)
  *  @return Pointer to struct stinger
  */
 MTA ("mta inline")
-struct stinger *stinger_new_full (int64_t nv, int64_t nebs, int64_t netypes, int64_t nvtypes)
+struct stinger *stinger_new_full (struct stinger_config_t * config)
 {
-  nv      = nv      ? nv      : STINGER_DEFAULT_VERTICES;
-  nebs    = nebs    ? nebs    : STINGER_DEFAULT_NEB_FACTOR * nv;
-  netypes = netypes ? netypes : STINGER_DEFAULT_NUMETYPES;
-  nvtypes = nvtypes ? nvtypes : STINGER_DEFAULT_NUMVTYPES;
+  int64_t nv      = config->nv      ? config->nv      : STINGER_DEFAULT_VERTICES;
+  int64_t nebs    = config->nebs    ? config->nebs    : STINGER_DEFAULT_NEB_FACTOR * nv;
+  int64_t netypes = config->netypes ? config->netypes : STINGER_DEFAULT_NUMETYPES;
+  int64_t nvtypes = config->nvtypes ? config->nvtypes : STINGER_DEFAULT_NUMVTYPES;
 
-  const size_t memory_size = stinger_max_memsize ();
+  size_t max_memsize_env = stinger_max_memsize();
+
+  const size_t memory_size = (config->memory_size == 0) ? max_memsize_env : config->memory_size;
 
   size_t i;
-  size_t sz     = 0;
-  size_t length = 0;
   int resized   = 0;
+  struct stinger_size_t sizes;
 
-  size_t vertices_start, physmap_start, ebpool_start, 
-	 etype_names_start, vtype_names_start, ETA_start;
+  while (1) {
+    sizes = calculate_stinger_size(nv, nebs, netypes, nvtypes);
 
-  do {
-    size_t tmp;
-    if(sz > ((memory_size * 3) / 4)) {
+    if(sizes.size > (((uint64_t)memory_size * 3) / 4)) {
+      if (config->no_resize) {
+        LOG_E("STINGER does not fit in memory.  no_resize set, so exiting.");
+        exit(-1);
+      }
       if(!resized) {
-	LOG_W_A("Resizing stinger to fit into memory (detected as %ld)", memory_size);
+        LOG_W_A("Resizing stinger to fit into memory (detected as %ld)", memory_size);
       }
       resized = 1;
 
-      sz    = 0;
-      nv   = (3*nv)/4;
-      nebs = STINGER_DEFAULT_NEB_FACTOR * nv;
+      nv    = (3*nv)/4;
+      nebs  = STINGER_DEFAULT_NEB_FACTOR * nv;
+    } else {
+      break;
     }
+  }
 
-    vertices_start = 0;
-    sz += (tmp = stinger_vertices_size(nv));
-    /* fprintf (stderr, " ... vtcs %ld\n", (long)tmp); */
+  struct stinger *G = xmalloc (sizeof(struct stinger) + sizes.size);
 
-    physmap_start = sz;
-    sz += (tmp = stinger_physmap_size(nv));
-    /* fprintf (stderr, " ... physmap %ld\n", (long)tmp); */
-
-    ebpool_start = sz;
-    sz += (tmp = netypes * stinger_ebpool_size(nebs));
-    /* fprintf (stderr, " ... ebpool %ld\n", (long)tmp); */
-
-    etype_names_start = sz;
-    sz += (tmp = stinger_names_size(netypes));
-    /* fprintf (stderr, " ... etypes %ld\n", (long)tmp); */
-
-    vtype_names_start = sz;
-    sz += (tmp = stinger_names_size(nvtypes));
-    /* fprintf (stderr, " ... vtypes %ld\n", (long)tmp); */
-
-    ETA_start = sz;
-    sz += (tmp = netypes * stinger_etype_array_size(nebs));
-    /* fprintf (stderr, " ... etypes ary %ld\n", (long)tmp); */
-
-    length = sz;
-    /* fprintf (stderr, "nv %ld  %ld %ld\n", (long)nv, (long)length, (long)memory_size); */
-  } while(sz > memory_size);
-
-  struct stinger *G = xmalloc (sizeof(struct stinger) + sz);
-
-  xzero(G, sizeof(struct stinger) + sz);
+  xzero(G, sizeof(struct stinger) + sizes.size);
 
   G->max_nv       = nv;
   G->max_neblocks = nebs;
   G->max_netypes  = netypes;
   G->max_nvtypes  = nvtypes;
 
-  G->length = length;
-  G->vertices_start = vertices_start;
-  G->physmap_start = physmap_start;
-  G->etype_names_start = etype_names_start;
-  G->vtype_names_start = vtype_names_start;
-  G->ETA_start = ETA_start;
-  G->ebpool_start = ebpool_start;
+  G->length = sizes.size;
+  G->vertices_start = sizes.vertices_start;
+  G->physmap_start = sizes.physmap_start;
+  G->etype_names_start = sizes.etype_names_start;
+  G->vtype_names_start = sizes.vtype_names_start;
+  G->ETA_start = sizes.ETA_start;
+  G->ebpool_start = sizes.ebpool_start;
 
   MAP_STING(G);
 
@@ -747,9 +762,13 @@ struct stinger *stinger_new_full (int64_t nv, int64_t nebs, int64_t netypes, int
   stinger_vertices_init(vertices, nv);
   stinger_physmap_init(physmap, nv);
   stinger_names_init(etype_names, netypes);
-  stinger_names_create_type(etype_names, "None", &zero);
+  if (!config->no_map_none_etype) {
+    stinger_names_create_type(etype_names, "None", &zero);
+  }
   stinger_names_init(vtype_names, nvtypes);
-  stinger_names_create_type(vtype_names, "None", &zero);
+  if (!config->no_map_none_vtype) {
+    stinger_names_create_type(vtype_names, "None", &zero);
+  }
 
   ebpool->ebpool_tail = 1;
   ebpool->is_shared = 0;
@@ -777,7 +796,12 @@ struct stinger *stinger_new_full (int64_t nv, int64_t nebs, int64_t netypes, int
 MTA ("mta inline")
 struct stinger *stinger_new (void)
 {
-  return stinger_new_full(0,0,0,0);;
+  struct stinger_config_t * config = (struct stinger_config_t *)xcalloc(1,sizeof(struct stinger_config_t));
+
+  struct stinger * s = stinger_new_full(config);
+  xfree(config);
+
+  return s;
 }
 
 /** @brief Free memory allocated to a particular STINGER instance.
@@ -1049,10 +1073,10 @@ stinger_insert_edge (struct stinger *G,
       endk = tmp->high;
 
       for (k = 0; k < endk; ++k) {
-	if (to == tmp->edges[k].neighbor) {
-	  update_edge_data (G, tmp, k, to, weight, timestamp, EDGE_WEIGHT_SET);
-	  return 0;
-	}
+        if (to == tmp->edges[k].neighbor) {
+          update_edge_data (G, tmp, k, to, weight, timestamp, EDGE_WEIGHT_SET);
+          return 0;
+        }
       }
     }
   }
@@ -1063,33 +1087,33 @@ stinger_insert_edge (struct stinger *G,
     /* 2: The edge isn't already there.  Check for an empty slot. */
     for (tmp = ebpool_priv + curs.eb; tmp != ebpool_priv; tmp = ebpool_priv + readff((uint64_t *)&tmp->next)) {
       if(type == tmp->etype) {
-	size_t k, endk;
-	endk = tmp->high;
+        size_t k, endk;
+        endk = tmp->high;
 
-	for (k = 0; k < STINGER_EDGEBLOCKSIZE; ++k) {
-	  int64_t myNeighbor = tmp->edges[k].neighbor;
-	  if (to == myNeighbor && k < endk) {
-	    update_edge_data (G, tmp, k, to, weight, timestamp, EDGE_WEIGHT_SET);
-	    return 0;
-	  }
+        for (k = 0; k < STINGER_EDGEBLOCKSIZE; ++k) {
+          int64_t myNeighbor = tmp->edges[k].neighbor;
+          if (to == myNeighbor && k < endk) {
+            update_edge_data (G, tmp, k, to, weight, timestamp, EDGE_WEIGHT_SET);
+            return 0;
+          }
 
-	  if (myNeighbor < 0 || k >= endk) {
-	    int64_t timefirst = readfe ( &(tmp->edges[k].timeFirst) );
-	    int64_t thisEdge = tmp->edges[k].neighbor;
-	    endk = tmp->high;
+          if (myNeighbor < 0 || k >= endk) {
+            int64_t timefirst = readfe ( &(tmp->edges[k].timeFirst) );
+            int64_t thisEdge = tmp->edges[k].neighbor;
+            endk = tmp->high;
 
-	    if (thisEdge < 0 || k >= endk) {
-	      update_edge_data (G, tmp, k, to, weight, timestamp, EDGE_WEIGHT_SET);
-	      return 1;
-	    } else if (to == thisEdge) {
-	      update_edge_data (G, tmp, k, to, weight, timestamp, EDGE_WEIGHT_SET);
-	      writexf ( &(tmp->edges[k].timeFirst), timefirst);
-	      return 0;
-	    } else {
-	      writexf ( &(tmp->edges[k].timeFirst), timefirst);
-	    }
-	  }
-	}
+            if (thisEdge < 0 || k >= endk) {
+              update_edge_data (G, tmp, k, to, weight, timestamp, EDGE_WEIGHT_SET);
+              return 1;
+            } else if (to == thisEdge) {
+              update_edge_data (G, tmp, k, to, weight, timestamp, EDGE_WEIGHT_SET);
+              writexf ( &(tmp->edges[k].timeFirst), timefirst);
+              return 0;
+            } else {
+              writexf ( &(tmp->edges[k].timeFirst), timefirst);
+            }
+          }
+        }
       }
       block_ptr = &(tmp->next);
     }
@@ -1099,12 +1123,12 @@ stinger_insert_edge (struct stinger *G,
     if (!old_eb) {
       eb_index_t newBlock = new_eb (G, type, from);
       if (newBlock == 0) {
-	writeef ((uint64_t *)block_ptr, (uint64_t)old_eb);
-	return -1;
+        writeef ((uint64_t *)block_ptr, (uint64_t)old_eb);
+        return -1;
       } else {
-	update_edge_data (G, ebpool_priv + newBlock, 0, to, weight, timestamp, EDGE_WEIGHT_SET);
-	ebpool_priv[newBlock].next = 0;
-	push_ebs (G, 1, &newBlock);
+        update_edge_data (G, ebpool_priv + newBlock, 0, to, weight, timestamp, EDGE_WEIGHT_SET);
+        ebpool_priv[newBlock].next = 0;
+        push_ebs (G, 1, &newBlock);
       }
       writeef ((uint64_t *)block_ptr, (uint64_t)newBlock);
       return 1;
@@ -1132,7 +1156,7 @@ stinger_typed_outdegree (const struct stinger * S, int64_t i, int64_t type) {
 
   for (tmp = ebpool_priv + curs.eb; tmp != ebpool_priv; tmp = ebpool_priv + readff((uint64_t *)&tmp->next)) {
     if(type == tmp->etype) {
-      out++;
+      out += tmp->numEdges;
     }
   }
   return out;

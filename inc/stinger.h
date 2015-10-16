@@ -22,10 +22,22 @@ typedef struct stinger stinger_t;
 
 #include "stinger_internal.h"
 
+/* STINGER configuration structure */
+struct stinger_config_t {
+	int64_t nv;
+	int64_t nebs;
+	int64_t netypes;
+	int64_t nvtypes;
+	size_t memory_size;
+	uint8_t no_map_none_etype;
+	uint8_t no_map_none_vtype;
+	uint8_t no_resize;
+};
+
 /* STINGER creation & deletion */
 struct stinger *stinger_new (void);
 
-struct stinger *stinger_new_full (int64_t nv, int64_t nebs, int64_t netypes, int64_t nvtypes);
+struct stinger *stinger_new_full (struct stinger_config_t * config);
 
 void stinger_set_initial_edges (struct stinger * /* G */ ,
 				const size_t     /* nv */ ,
@@ -44,6 +56,8 @@ struct stinger *stinger_free_all (struct stinger *);
 vindex_t stinger_max_nv(stinger_t * S);
 
 int64_t stinger_max_num_etypes(stinger_t * S);
+
+struct stinger_size_t calculate_stinger_size(int64_t nv, int64_t nebs, int64_t netypes, int64_t nvtypes);
 
 /* read and write stinger from disk 
  * writes stinger into series of files in the specified directory
@@ -333,6 +347,9 @@ stinger_etype_array_size(int64_t nebs);
 #define STINGER_FORALL_EDGES_OF_ALL_TYPES_BEGIN(STINGER_) do {
 #define STINGER_FORALL_EDGES_OF_ALL_TYPES_END() } while (0)
 
+#define STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_BEGIN(STINGER_) do {
+#define STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_END() } while (0)
+
 /* read-only traversal macros *
  * These should be safe even when the graph is being modified elsewhere. All 
  * variables are local and will not be stored back in the graph.
@@ -347,7 +364,7 @@ stinger_etype_array_size(int64_t nebs);
 #define STINGER_READ_ONLY_PARALLEL_FORALL_EDGES_OF_VTX_END() } while (0)
 
 #define STINGER_READ_ONLY_PARALLEL_FORALL_EDGES_OF_TYPE_OF_VTX_BEGIN(STINGER_,TYPE_,VTX_) do {
-#define STINGER_READ_ONLY_PARALLEL__FORALL_EDGES_OF_TYPE_OF_VTX_END() } while (0)
+#define STINGER_READ_ONLY_PARALLEL_FORALL_EDGES_OF_TYPE_OF_VTX_END() } while (0)
 
 #define STINGER_READ_ONLY_FORALL_EDGES_BEGIN(STINGER_,TYPE_) do {
 #define STINGER_READ_ONLY_FORALL_EDGES_END() } while (0)
