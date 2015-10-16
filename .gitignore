@@ -1,2 +1,3 @@
 libstinger.a
 obj
+*.o

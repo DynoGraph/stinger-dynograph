@@ -1,7 +1,7 @@
-/* 
- * GraphBench is a benchmark suite for 
+/*
+ * GraphBench is a benchmark suite for
  *		microarchitectural simulation of streaming graph workloads
- * 
+ *
  * Copyright (C) 2014  Georgia Tech Research Institute
  * Jason Poovey (jason.poovey@gtri.gatech.edu)
  * David Ediger (david.ediger@gtri.gatech.edu)
@@ -30,6 +30,7 @@
 int
 load_raw_benchmark_data_into_stinger(stinger_t * S, char * filename)
 {
+/*
     FILE* in = fopen(filename, "rb");
     size_t size;
     fread(&size, sizeof(size_t), 1, in);
@@ -40,12 +41,14 @@ load_raw_benchmark_data_into_stinger(stinger_t * S, char * filename)
         return -1;
     }
     fclose(in);
+    */
     return 0;
 }
 
 int
 load_benchmark_data_into_stinger (stinger_t * S, char * filename, char hooks)
 {
+  /*
   int64_t type = 0;
   int64_t weight = 10;
   int64_t timestamp = 1;
@@ -79,13 +82,15 @@ load_benchmark_data_into_stinger (stinger_t * S, char * filename, char hooks)
   }
 
   fclose(fp);
-
+  */
   /* consistency check */
+  /*
   printf("\n");
   printf("\tNumber of edges read: %ld\n", num_edges);
   printf("\tNumber of STINGER vertices: %ld\n", stinger_num_active_vertices(S));
   printf("\tNumber of STINGER edges: %ld\n", stinger_total_edges(S));
   printf("\tConsistency: %ld (should be 0)\n", (long) stinger_consistency_check(S, STINGER_MAX_LVERTICES));
+  */
 
   return 0;
 }

@@ -1,31 +1,10 @@
-/* 
- * GraphBench is a benchmark suite for 
- *		microarchitectural simulation of streaming graph workloads
- * 
- * Copyright (C) 2014  Georgia Tech Research Institute
- * Jason Poovey (jason.poovey@gtri.gatech.edu)
- * David Ediger (david.ediger@gtri.gatech.edu)
- * Eric Hein (eric.hein@gtri.gatech.edu)
- * Tom Conte (tom@conte.us)
-
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
-
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
 #include "stinger_vertex.h"
 #include "stinger_atomics.h"
+//#include "xml_support.h"
 #include "x86_full_empty.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *
  * STINGER VERTICES
@@ -47,7 +26,7 @@ stinger_vertices_init(stinger_vertices_t * S, int64_t max_vertices)
   return;
 }
 
-inline size_t 
+inline size_t
 stinger_vertices_size(int64_t max_vertices)
 {
   size_t rtn = sizeof(stinger_vertices_t) + max_vertices * sizeof(stinger_vertex_t);
@@ -86,7 +65,7 @@ stinger_vertices_size_bytes(const stinger_vertices_t * vertices)
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 #define VTX(v) stinger_vertices_vertex_get(vertices, v)
- 
+
 /* TYPE */
 
 inline vtype_t

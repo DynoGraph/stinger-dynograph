@@ -1,27 +1,4 @@
 /* -*- mode: C; mode: folding; fill-column: 70; -*- */
-/* 
- * GraphBench is a benchmark suite for 
- *		microarchitectural simulation of streaming graph workloads
- * 
- * Copyright (C) 2014  Georgia Tech Research Institute
- * Jason Poovey (jason.poovey@gtri.gatech.edu)
- * David Ediger (david.ediger@gtri.gatech.edu)
- * Eric Hein (eric.hein@gtri.gatech.edu)
- * Tom Conte (tom@conte.us)
-
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
-
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
 #if !defined(STINGER_ATOMICS_H_)
 #define STINGER_ATOMICS_H_
 
@@ -47,7 +24,88 @@ static inline int64_t stinger_int64_cas (int64_t *, int64_t, int64_t);
    and people huddle and cry when they see caddr_t. */
 static inline void *stinger_ptr_cas (void **, void *, void *);
 
-#if defined(__GNUC__)||defined(__INTEL_COMPILER)
+#if defined(__MTA__)
+/* {{{ MTA defs */
+#pragma mta inline
+int
+stinger_int_fetch_add (int *x, int i)
+{
+  return int_fetch_add (x, i);
+}
+
+#pragma mta inline
+int64_t
+stinger_int64_fetch_add (int64_t * x, int64_t i)
+{
+  return int_fetch_add (x, i);
+}
+
+#pragma mta inline
+uint64_t
+stinger_uint64_fetch_add (uint64_t * x, uint64_t i)
+{
+  return int_fetch_add (x, i);
+}
+
+#pragma mta inline
+size_t
+stinger_size_fetch_add (size_t * x, size_t i)
+{
+  return int_fetch_add (x, i);
+}
+
+#pragma mta inline
+void
+stinger_int64_swap (int64_t * x, int64_t * y)
+{
+  int64_t vx, vy, t;
+  vx = readfe (x);
+  vy = readfe (y);
+  writeef (x, vy);
+  writeef (y, vx);
+}
+
+#pragma mta inline
+void
+stinger_uint64_swap (uint64_t * x, uint64_t * y)
+{
+  uint64_t vx, vy, t;
+  vx = readfe (x);
+  vy = readfe (y);
+  writeef (x, vy);
+  writeef (y, vx);
+}
+
+#pragma mta inline
+void *
+stinger_ptr_cas (void **x, void *origx, void *newx)
+{
+  void *curx, *updx;
+  curx = readfe (x);
+  if (curx == origx)
+    updx = newx;
+  else
+    updx = curx;
+  writeef (x, updx);
+  return curx;
+}
+
+#pragma mta inline
+int64_t
+stinger_int64_cas (int64_t * x, int64_t origx, int64_t newx)
+{
+  int64_t curx, updx;
+  curx = readfe (x);
+  if (curx == origx)
+    updx = newx;
+  else
+    updx = curx;
+  writeef (x, updx);
+  return curx;
+}
+
+/* }}} */
+#elif defined(__GNUC__)||defined(__INTEL_COMPILER)
 /* {{{ GCC / ICC defs */
 int
 stinger_int_fetch_add (int *x, int i)
@@ -105,6 +163,71 @@ int64_t
 stinger_int64_cas (int64_t * x, int64_t origx, int64_t newx)
 {
   return __sync_val_compare_and_swap (x, origx, newx);
+}
+
+/* }}} */
+#elif defined(__xlc__)
+/* {{{ XLC defs */
+int
+stinger_int_fetch_add (int *x, int i)
+{
+  return __fetch_and_add (x, i);
+}
+
+int64_t
+stinger_int64_fetch_add (int64_t * x, int64_t i)
+{
+  return __fetch_and_addlp ((volatile unsigned long*)x, (unsigned long)i);
+}
+
+uint64_t
+stinger_uint64_fetch_add (uint64_t * x, uint64_t i)
+{
+  return __fetch_and_addlp ((int64_t*)x, i);
+}
+
+size_t
+stinger_size_fetch_add (size_t * x, size_t i)
+{
+  return __fetch_and_addlp ((int64_t*)x, i);
+}
+
+void
+stinger_int64_swap (int64_t * x, int64_t * y)
+{
+  int64_t vx;
+  do
+    {
+      vx = *x;
+    }
+  while (!__compare_and_swaplp (x, &vx, *y));
+}
+
+void
+stinger_uint64_swap (uint64_t * x, uint64_t * y)
+{
+  uint64_t vx;
+  do
+    {
+      vx = *x;
+    }
+  while (!__compare_and_swaplp ((int64_t*)x, (int64_t*)&vx, *y));
+}
+
+void *
+stinger_ptr_cas (void **x, void *origx, void *newx)
+{
+  void * t = *x;
+  __compare_and_swaplp ((int64_t*)x, (int64_t*)&origx, (int64_t)newx);
+  return t;
+}
+
+int64_t
+stinger_int64_cas (int64_t * x, int64_t origx, int64_t newx)
+{
+  int64_t t = *x;
+  __compare_and_swaplp (x, &origx, newx);
+  return t;
 }
 
 /* }}} */
