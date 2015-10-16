@@ -3,11 +3,9 @@
 #if defined(_OPENMP)
 #include <omp.h>
 #endif
-
+#include <limits.h>
 #include "core_util.h"
 #include "stinger_defs.h"
-
-#include "compat/getMemorySize.h"
 
 /**
  * @brief Simple comparator for pairs of int64_t.
@@ -67,12 +65,12 @@ bs64_n (size_t n, int64_t * restrict d)
  * This sum is inclusive meaning that the first element of the output will be
  * equal to the first element of the input (not necessarily 0).
  *
- * If compiled with OpenMP, assumes that you are in parallel section and are 
- * calling this with all threads (although it will also work outside of 
+ * If compiled with OpenMP, assumes that you are in parallel section and are
+ * calling this with all threads (although it will also work outside of
  * a parallel OpenMP context - just DO NOT call this in OpenMP single or master
  * inside of a parallel region).
  *
- * If compiled without OpenMP this is implemented as a simple serial prefix sum  
+ * If compiled without OpenMP this is implemented as a simple serial prefix sum
  * that should be auto-parallelized by the Cray MTA/XMT compiler.
  *
  * @param n The input array size.
@@ -99,7 +97,7 @@ prefix_sum (const int64_t n, int64_t *ary)
   OMP("omp barrier");
 
   slice_begin = (tid * n) / nt;
-  slice_end = ((tid + 1) * n) / nt; 
+  slice_end = ((tid + 1) * n) / nt;
 
   /* compute sums of slices */
   tmp = 0;
@@ -225,7 +223,7 @@ set_max_memsize_env (void)
     }
     max_memsize_env = mx;
   } else {
-    max_memsize_env = getMemorySize() / 2; // Default to 1/2 memory size
+    max_memsize_env = 1024 * 1024 * 1024; // Default to 1GB
   }
 }
 
