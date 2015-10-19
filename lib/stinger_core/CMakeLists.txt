@@ -11,11 +11,11 @@ set(headers
 	inc/core_util.h
 	inc/stinger.h
 	inc/stinger_atomics.h
-	inc/stinger_defs.h
+	inc/stinger_defs.h.in
 	inc/stinger_deprecated.h
 	inc/stinger_error.h
 	inc/stinger_internal.h
-	inc/stinger_names.h
+	inc/stinger_names.h.in
 	inc/stinger_physmap.h
 	inc/stinger_return.h
 	inc/stinger_traversal.h

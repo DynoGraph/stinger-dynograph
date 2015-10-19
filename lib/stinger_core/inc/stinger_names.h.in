@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-#define NAME_STR_MAX 255
+#define NAME_STR_MAX @STINGER_NAME_STR_MAX@
 
 #ifdef NAME_USE_SQLITE
 	#include "sqlite/sqlite3.h"
