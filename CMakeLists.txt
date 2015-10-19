@@ -19,6 +19,17 @@ endif()
 # Use the gnu9x C standard
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu9x")
 
+# Memory size configuration bits for stinger_core
+set(STINGER_DEFAULT_VERTICES "(1L<<24)" CACHE STRING "Default number of vertices")
+set(STINGER_DEFAULT_NUMETYPES "5" CACHE STRING "Default number of edge types")
+set(STINGER_DEFAULT_NUMVTYPES "128" CACHE STRING "Default number of vertex types")
+set(STINGER_DEFAULT_NEB_FACTOR "4" CACHE STRING "Default number of edge blocks per vertex")
+set(STINGER_EDGEBLOCKSIZE "14" CACHE STRING "Number of edges per edge block")
+set(STINGER_NAME_STR_MAX "255" CACHE STRING "Max string length in physmap")
+
+configure_file(${CMAKE_SOURCE_DIR}/lib/stinger_core/inc/stinger_defs.h.in ${CMAKE_BINARY_DIR}/include/stinger_core/stinger_defs.h @ONLY)
+configure_file(${CMAKE_SOURCE_DIR}/lib/stinger_core/inc/stinger_names.h.in ${CMAKE_BINARY_DIR}/include/stinger_core/stinger_names.h @ONLY)
+
 # Begin building subdirectories
 add_subdirectory(lib)
 add_subdirectory(src)
