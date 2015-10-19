@@ -1,6 +1,6 @@
 /*
  * GraphBench is a benchmark suite for
- *		microarchitectural simulation of streaming graph workloads
+ *      microarchitectural simulation of streaming graph workloads
  *
  * Copyright (C) 2014  Georgia Tech Research Institute
  * Jason Poovey (jason.poovey@gtri.gatech.edu)
@@ -30,7 +30,7 @@
 int
 load_raw_benchmark_data_into_stinger(stinger_t * S, char * filename)
 {
-/*
+
     FILE* in = fopen(filename, "rb");
     size_t size;
     fread(&size, sizeof(size_t), 1, in);
@@ -41,58 +41,50 @@ load_raw_benchmark_data_into_stinger(stinger_t * S, char * filename)
         return -1;
     }
     fclose(in);
-    */
+
     return 0;
 }
 
 int
 load_benchmark_data_into_stinger (stinger_t * S, char * filename, char hooks)
 {
-  /*
-  int64_t type = 0;
-  int64_t weight = 10;
-  int64_t timestamp = 1;
+    int64_t type = 0;
+    int64_t weight = 10;
+    int64_t timestamp = 1;
 
-  FILE *fp = fopen(filename, "r");
+    FILE *fp = fopen(filename, "r");
 
-  if (fp == NULL) {
-    printf("ERROR opening file: %s\n", filename);
-    exit(-1);
-  }
-
-  int64_t src, dst;
-  int64_t num_edges = 0;
-
-  printf("Loading: %s\n", filename);
-  if(hooks) {
-    bench_start();
-  }
-  while ( EOF != fscanf(fp, "%ld %ld\n", &src, &dst) ) {
-    if (src < 0 && dst == 0) {  // delete vertex
-      stinger_delete_vertex (S, -src);
-    } else if (src < 0) {
-			stinger_remove_edge(S,type,-src,dst);
-		} else { // insert edge
-      stinger_insert_edge_pair (S, type, src, dst, weight, timestamp);
-      num_edges++;
+    if (fp == NULL) {
+        printf("ERROR opening file: %s\n", filename);
+        exit(-1);
     }
-  }
-  if (hooks) {
-    bench_end();
-  }
 
-  fclose(fp);
-  */
-  /* consistency check */
-  /*
-  printf("\n");
-  printf("\tNumber of edges read: %ld\n", num_edges);
-  printf("\tNumber of STINGER vertices: %ld\n", stinger_num_active_vertices(S));
-  printf("\tNumber of STINGER edges: %ld\n", stinger_total_edges(S));
-  printf("\tConsistency: %ld (should be 0)\n", (long) stinger_consistency_check(S, STINGER_MAX_LVERTICES));
-  */
+    int64_t src, dst;
+    int64_t num_edges = 0;
 
-  return 0;
+    printf("Loading: %s\n", filename);
+
+    while ( EOF != fscanf(fp, "%ld %ld\n", &src, &dst) ) {
+        if (src < 0 && dst == 0) {  // delete vertex
+            stinger_remove_vertex (S, -src);
+        } else if (src < 0) {
+            stinger_remove_edge(S,type,-src,dst);
+        } else { // insert edge
+            stinger_insert_edge_pair (S, type, src, dst, weight, timestamp);
+            num_edges++;
+        }
+    }
+
+    fclose(fp);
+
+    // consistency check
+    printf("\n");
+    printf("\tNumber of edges read: %ld\n", num_edges);
+    printf("\tNumber of STINGER vertices: %ld\n", stinger_num_active_vertices(S));
+    printf("\tNumber of STINGER edges: %ld\n", stinger_total_edges(S));
+    //printf("\tConsistency: %ld (should be 0)\n", (long) stinger_consistency_check(S, STINGER_MAX_LVERTICES));
+
+    return 0;
 }
 
 

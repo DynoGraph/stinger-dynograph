@@ -35,9 +35,8 @@ set(config
 file(COPY ${headers} DESTINATION "${CMAKE_BINARY_DIR}/include/stinger_core")
 
 include_directories("${CMAKE_BINARY_DIR}/include/stinger_core")
-include_directories("${CMAKE_BINARY_DIR}/include/stinger_utils")
 
 set_source_files_properties(${config} PROPERTIES GENERATED TRUE)
 set_source_files_properties(${unoptimized_sources} PROPERTIES COMPILE_FLAGS -O0)
-add_library(stinger_core SHARED ${sources} ${unoptimized_sources} ${headers} ${config})
+add_library(stinger_core STATIC ${sources} ${unoptimized_sources} ${headers} ${config})
 target_link_libraries(stinger_core)
