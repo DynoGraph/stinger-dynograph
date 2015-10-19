@@ -30,14 +30,18 @@
 int
 load_raw_benchmark_data_into_stinger(stinger_t * S, char * filename)
 {
-
+    if (S != NULL)
+    {
+        printf("Failed to load raw graph! Need an empty STINGER to load into.\n");
+        return -1;
+    }
     FILE* in = fopen(filename, "rb");
     size_t size;
     fread(&size, sizeof(size_t), 1, in);
-    S = malloc(size);
+    S = xmalloc(size);
     if (!fread(S, sizeof(stinger_t), 1, in))
     {
-        printf("Failed to load raw graph! Possible STINGER version mismatch.");
+        printf("Failed to load raw graph! Possible STINGER version mismatch.\n");
         return -1;
     }
     fclose(in);

@@ -4,7 +4,7 @@
 #include <hooks.h>
 
 #include <stinger.h>
-#include <pagerank.h>
+#include <static_components.h>
 
 int main(int argc, char **argv)
 {
@@ -18,17 +18,15 @@ int main(int argc, char **argv)
     uint64_t num_vertices = stinger_max_active_vertex(S) + 1;
 
     // Pre-allocate output data structures
-    double * pagerank_scores = xmalloc (num_vertices * sizeof(int64_t));
-    double * pagerank_scores_tmp = xmalloc (num_vertices * sizeof(int64_t));
+    int64_t *component_map = xmalloc (num_vertices * sizeof(int64_t));
 
     // Run the benchmark
     bench_start();
-    page_rank_directed(S, num_vertices, pagerank_scores, pagerank_scores_tmp, 1e-8, 0.85, 100);
+    parallel_shiloach_vishkin_components(S, num_vertices, component_map);
     bench_end();
 
     // Clean up
-    free (pagerank_scores);
-    free (pagerank_scores_tmp);
+    free (component_map);
     stinger_free_all (S);
     return 0;
 }

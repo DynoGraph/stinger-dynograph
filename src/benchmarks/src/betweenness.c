@@ -4,7 +4,7 @@
 #include <hooks.h>
 
 #include <stinger.h>
-#include <pagerank.h>
+#include <betweenness.h>
 
 int main(int argc, char **argv)
 {
@@ -18,17 +18,24 @@ int main(int argc, char **argv)
     uint64_t num_vertices = stinger_max_active_vertex(S) + 1;
 
     // Pre-allocate output data structures
-    double * pagerank_scores = xmalloc (num_vertices * sizeof(int64_t));
-    double * pagerank_scores_tmp = xmalloc (num_vertices * sizeof(int64_t));
+    double * bc = xmalloc(num_vertices * sizeof(int64_t));
+    int64_t *found_count = xmalloc(num_vertices * sizeof(int64_t));
+
+    // Allow override of num_samples
+    int64_t num_samples = 256;
+    if (argc > 2)
+    {
+        num_samples = atol(argv[2]);
+    }
 
     // Run the benchmark
     bench_start();
-    page_rank_directed(S, num_vertices, pagerank_scores, pagerank_scores_tmp, 1e-8, 0.85, 100);
+    sample_search(S, num_vertices, num_samples, bc, found_count);
     bench_end();
 
     // Clean up
-    free (pagerank_scores);
-    free (pagerank_scores_tmp);
+    free (bc);
+    free (found_count);
     stinger_free_all (S);
     return 0;
 }
