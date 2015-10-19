@@ -1,3 +1,2 @@
-libstinger.a
-obj
+build
 *.o

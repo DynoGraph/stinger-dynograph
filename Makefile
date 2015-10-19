@@ -5,7 +5,7 @@ OBJ_DIR = ./obj
 
 CC = gcc
 #CFLAGS = -I$(INC_DIR) -O3 -std=c99 -fopenmp
-CFLAGS = -I$(INC_DIR) -O3 -std=c99 -g
+CFLAGS = -I$(INC_DIR) -O3 -std=c99 -g -w
 LDFLAGS =
 
 HEADERS = $(wildcard $(INC_DIR)/*.h)
