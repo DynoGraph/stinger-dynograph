@@ -1,6 +1,24 @@
 cmake_minimum_required (VERSION 2.8.11)
 project (DYNOGRAPH)
 
+set(HOOKS_TYPE "NONE" CACHE STRING "Add flags and/or ROI hooks for running under a simulator. Values are 'GEM5', 'SNIPER', 'PIN', 'PAPI' ")
+
+if (HOOKS_TYPE EQUAL "SNIPER")
+	add_definitions(-DENABLE_SNIPER_HOOKS)
+	include($ENV{SNIPER_ROOT}/config/buildconf.cmake)
+	include($ENV{BENCHMARKS_ROOT}/tools/hooks/buildconf.cmake)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${HOOKS_CFLAGS}")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SNIPER_LDFLAGS} ${HOOKS_LDFLAGS}")
+
+elseif (HOOKS_TYPE EQUAL "GEM5")
+	add_definitions(-DENABLE_GEM5_HOOKS)
+
+elseif (HOOKS_TYPE EQUAL "PIN")
+	add_definitions(-DENABLE_PIN_HOOKS)
+
+endif()
+# TODO make sure only one of the above is ever set
+
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
@@ -29,6 +47,7 @@ set(STINGER_NAME_STR_MAX "255" CACHE STRING "Max string length in physmap")
 
 configure_file(${CMAKE_SOURCE_DIR}/lib/stinger_core/inc/stinger_defs.h.in ${CMAKE_BINARY_DIR}/include/stinger_core/stinger_defs.h @ONLY)
 configure_file(${CMAKE_SOURCE_DIR}/lib/stinger_core/inc/stinger_names.h.in ${CMAKE_BINARY_DIR}/include/stinger_core/stinger_names.h @ONLY)
+
 
 # Begin building subdirectories
 add_subdirectory(lib)

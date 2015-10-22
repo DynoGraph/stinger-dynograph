@@ -1,7 +1,7 @@
-/* 
- * GraphBench is a benchmark suite for 
- *		microarchitectural simulation of streaming graph workloads
- * 
+/*
+ * GraphBench is a benchmark suite for
+ *      microarchitectural simulation of streaming graph workloads
+ *
  * Copyright (C) 2014  Georgia Tech Research Institute
  * Jason Poovey (jason.poovey@gtri.gatech.edu)
  * David Ediger (david.ediger@gtri.gatech.edu)
@@ -24,14 +24,31 @@
 #include "hooks.h"
 #include <stdio.h>
 
+#if defined(ENABLE_SNIPER_HOOKS)
+    #include <hooks_base.h>
+#elif defined(ENABLE_PIN_HOOKS)
+#endif
+
 int __attribute__ ((noinline)) bench_start() {
-  printf("Starting\n");
-  __asm__("");
-  return 0;
+    printf("[DynoGraph] Entering ROI...\n");
+
+    #if defined(ENABLE_SNIPER_HOOKS)
+        parmacs_roi_begin();
+    #elif defined(ENABLE_PIN_HOOKS)
+        __asm__("");
+    #endif
+
+    return 0;
 }
 
 int __attribute__ ((noinline)) bench_end() {
-  printf("Ending\n");
-  __asm__("");
-  return 0;
+    #if defined(ENABLE_SNIPER_HOOKS)
+        parmacs_roi_end();
+    #elif defined(ENABLE_PIN_HOOKS)
+        __asm__("");
+    #endif
+
+    printf("[DynoGraph] Exiting ROI...\n");
+    return 0;
 }
+
