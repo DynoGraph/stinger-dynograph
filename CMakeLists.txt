@@ -1,23 +1,38 @@
 cmake_minimum_required (VERSION 2.8.11)
 project (DYNOGRAPH)
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-set(HOOKS_TYPE "NONE" CACHE STRING "Add flags and/or ROI hooks for running under a simulator. Values are 'GEM5', 'SNIPER', 'PIN', 'PAPI' ")
+set(HOOKS_TYPE "" CACHE STRING "Add flags and/or ROI hooks for running under a simulator. Values are 'NONE', 'GEM5', 'SNIPER', 'PIN', 'PAPI' ")
 
-if (HOOKS_TYPE EQUAL "SNIPER")
+if (HOOKS_TYPE STREQUAL "")
+
+elseif (HOOKS_TYPE STREQUAL "SNIPER")
 	add_definitions(-DENABLE_SNIPER_HOOKS)
+	set(SNIPER_ROOT $ENV{SNIPER_ROOT})
+	set(GRAPHITE_ROOT $ENV{SNIPER_ROOT})
 	include($ENV{SNIPER_ROOT}/config/buildconf.cmake)
+	set(BENCHMARKS_ROOT $ENV{BENCHMARKS_ROOT})
 	include($ENV{BENCHMARKS_ROOT}/tools/hooks/buildconf.cmake)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${HOOKS_CFLAGS}")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SNIPER_CFLAGS} ${HOOKS_CFLAGS}")
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SNIPER_LDFLAGS} ${HOOKS_LDFLAGS}")
 
-elseif (HOOKS_TYPE EQUAL "GEM5")
+elseif (HOOKS_TYPE STREQUAL "GEM5")
 	add_definitions(-DENABLE_GEM5_HOOKS)
+	set(GEM5_HOME $ENV{GEM5_HOME})
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -I${GEM5_HOME}")
-	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} $(GEM5_HOME)/util/m5/m5op_alpha.S")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${GEM5_HOME}/util/m5/m5op_alpha.S")
 
-elseif (HOOKS_TYPE EQUAL "PIN")
+elseif (HOOKS_TYPE STREQUAL "PIN")
 	add_definitions(-DENABLE_PIN_HOOKS)
 
+elseif (HOOKS_TYPE STREQUAL "PAPI")
+	add_definitions(-DENABLE_PAPI_HOOKS)
+	find_package( PAPI REQUIRED )
+	include_directories(${PAPI_INCLUDE_DIRS})
+	link_libraries(${PAPI_LIBRARIES})
+
+else ()
+	message(FATAL_ERROR "Invalid value for HOOKS_TYPE : ${HOOKS_TYPE}")
 endif()
 # TODO make sure only one of the above is ever set
 
