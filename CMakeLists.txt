@@ -12,6 +12,8 @@ if (HOOKS_TYPE EQUAL "SNIPER")
 
 elseif (HOOKS_TYPE EQUAL "GEM5")
 	add_definitions(-DENABLE_GEM5_HOOKS)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -I${GEM5_HOME}")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} $(GEM5_HOME)/util/m5/m5op_alpha.S")
 
 elseif (HOOKS_TYPE EQUAL "PIN")
 	add_definitions(-DENABLE_PIN_HOOKS)

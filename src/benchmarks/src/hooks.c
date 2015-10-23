@@ -27,13 +27,20 @@
 #if defined(ENABLE_SNIPER_HOOKS)
     #include <hooks_base.h>
 #elif defined(ENABLE_PIN_HOOKS)
+    // Nothing to include here
+#elif defined(ENABLE_GEM5_HOOKS)
+    #include <util/m5/m5op.h>
 #endif
+
+// TODO Allow multiple ROI's per benchmark run
 
 int __attribute__ ((noinline)) bench_start() {
     printf("[DynoGraph] Entering ROI...\n");
 
     #if defined(ENABLE_SNIPER_HOOKS)
         parmacs_roi_begin();
+    #elif defined(ENABLE_GEM5_HOOKS)
+        m5_reset_stats();
     #elif defined(ENABLE_PIN_HOOKS)
         __asm__("");
     #endif
@@ -44,6 +51,8 @@ int __attribute__ ((noinline)) bench_start() {
 int __attribute__ ((noinline)) bench_end() {
     #if defined(ENABLE_SNIPER_HOOKS)
         parmacs_roi_end();
+    #elif defined(ENABLE_GEM5_HOOKS)
+        m5_exit();
     #elif defined(ENABLE_PIN_HOOKS)
         __asm__("");
     #endif
