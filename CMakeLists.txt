@@ -42,7 +42,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
 include_directories("${CMAKE_BINARY_DIR}/include")
 
-#link_libraries(m)
+link_libraries(m)
 
 # Build with OpenMP
 find_package( OpenMP )
