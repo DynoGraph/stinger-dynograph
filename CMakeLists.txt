@@ -2,10 +2,11 @@ cmake_minimum_required (VERSION 2.8.11)
 project (DYNOGRAPH)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+
 set(HOOKS_TYPE "" CACHE STRING "Add flags and/or ROI hooks for running under a simulator. Values are 'NONE', 'GEM5', 'SNIPER', 'PIN', 'PAPI' ")
 
 if (HOOKS_TYPE STREQUAL "")
-
+	# No hooks
 elseif (HOOKS_TYPE STREQUAL "SNIPER")
 	add_definitions(-DENABLE_SNIPER_HOOKS)
 	set(SNIPER_ROOT $ENV{SNIPER_ROOT})
@@ -18,6 +19,7 @@ elseif (HOOKS_TYPE STREQUAL "SNIPER")
 
 elseif (HOOKS_TYPE STREQUAL "GEM5")
 	add_definitions(-DENABLE_GEM5_HOOKS)
+	#TODO Set compiler
 	set(GEM5_HOME $ENV{GEM5_HOME})
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -I${GEM5_HOME}")
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${GEM5_HOME}/util/m5/m5op_alpha.S")
@@ -29,19 +31,18 @@ elseif (HOOKS_TYPE STREQUAL "PAPI")
 	add_definitions(-DENABLE_PAPI_HOOKS)
 	find_package( PAPI REQUIRED )
 	include_directories(${PAPI_INCLUDE_DIRS})
-	link_libraries(${PAPI_LIBRARIES})
+	set(BENCHMARK_LIBS "${PAPI_LIBRARIES}")
 
 else ()
 	message(FATAL_ERROR "Invalid value for HOOKS_TYPE : ${HOOKS_TYPE}")
 endif()
-# TODO make sure only one of the above is ever set
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
 include_directories("${CMAKE_BINARY_DIR}/include")
 
-link_libraries(m)
+#link_libraries(m)
 
 # Build with OpenMP
 find_package( OpenMP )

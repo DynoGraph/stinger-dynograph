@@ -11,7 +11,7 @@ include_directories("${CMAKE_BINARY_DIR}/include/benchmarks")
 
 macro(add_benchmark bench_name)
   add_executable(${bench_name} src/${bench_name}.c src/stinger_bench.c src/hooks.c)
-  target_link_libraries(${bench_name} stinger_core stinger_alg)
+  target_link_libraries(${bench_name} stinger_core stinger_alg ${BENCHMARK_LIBS})
 endmacro()
 
 add_benchmark(adamic_adar)
