@@ -1,7 +1,7 @@
-/* 
- * GraphBench is a benchmark suite for 
+/*
+ * GraphBench is a benchmark suite for
  *		microarchitectural simulation of streaming graph workloads
- * 
+ *
  * Copyright (C) 2014  Georgia Tech Research Institute
  * Jason Poovey (jason.poovey@gtri.gatech.edu)
  * David Ediger (david.ediger@gtri.gatech.edu)
@@ -24,4 +24,3 @@
 
 int bench_start();
 int bench_end();
-int dump_stats();
