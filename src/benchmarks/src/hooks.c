@@ -84,7 +84,7 @@
     void papi_stop()
     {
         // Stop the counters
-        if (PAPI_stop_counters(papi_values, papi_num_events) != PAPI_OK);
+        if (PAPI_stop_counters(papi_values, papi_num_events) != PAPI_OK)
         {
             printf("[DynoGraph] Error in PAPI: failed to stop counters.\n");
             exit(1);
@@ -103,7 +103,7 @@
             fprintf(out, "\n\t\"%s\":%lli", papi_counters[i].name, papi_values[i]);
             if (i != papi_num_events - 1) { fprintf(out, ","); }
         }
-        fprintf(out, "}\n");
+        fprintf(out, "\n}\n");
         fclose(out);
     }
 #endif
