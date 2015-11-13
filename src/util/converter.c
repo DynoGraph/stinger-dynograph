@@ -22,41 +22,59 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stdint.h>
-
-#include "hooks.h"
-#include "stinger.h"
-#include "stinger_atomics.h"
-#include "stinger_bench.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <stinger.h>
+#include <stinger_bench.h>
 #include "xmalloc.h"
 
 
-int
-convert_to_raw_graph (stinger_t * S, char * in_filename, char * out_filename)
+stinger_t *
+bench_load_graph_with_timestamps(stinger_t * S, const char * filename, bool directed)
 {
-    printf("Converting %s to %s...\n", in_filename, out_filename);
-    load_benchmark_data_into_stinger(S, in_filename, 0);
-    FILE* out = fopen(out_filename, "wb");
-    //fwrite(sizeof(struct stinger_t), 1, sizeof(size_t), out);
-    if (!fwrite(S, sizeof(stinger_t), 1, out))
+    FILE *in = fopen(filename, "r");
+    if (in == NULL)
     {
-        printf("Failed to save raw graph!\n");
-        return -1;
+        printf("ERROR opening file: %s\n", filename);
+        exit(-1);
     }
-    fclose(out);
-    printf("Done\n");
+    uint64_t max_nv = stinger_max_nv(S);
+    int64_t src, dst, weight, ts;
+    while ( EOF != fscanf(in, "%ld %ld %ld %ld\n", &src, &dst, &weight, &ts) )
+    {
+        if (src >= max_nv || dst >= max_nv)
+        {
+            printf("Too many vertices: max_nv = %lu, src = %lu, dst = %lu\n", max_nv, src, dst);
+        }
+        if (directed) {
+            stinger_insert_edge     (S, 0, src, dst, weight, ts);
+        } else {
+            stinger_insert_edge_pair(S, 0, src, dst, weight, ts);
+        }
+    }
+    fclose(in);
+    return S;
 }
+
 
 int
 main (int argc, char ** argv)
 {
-    stinger_t * S = stinger_new();
     if (argc < 3)
     {
         printf("Usage: %s input.graph.el output.graph.bin\n", argv[0]);
         exit(1);
     }
 
-    convert_to_raw_graph(S, argv[1], argv[2]);
+    // Convert undirected graph to binary
+    stinger_t * S = stinger_new();
+    bool directed = false;
+    printf("Loading: %s\n", argv[1]);
+    bench_load_graph_with_timestamps(S, argv[1], directed);
+    printf("Saving: %s\n", argv[2]);
+    stinger_save_to_file(S, stinger_max_active_vertex(S), argv[2]);
     stinger_free_all (S);
     return 0;
 }
+
