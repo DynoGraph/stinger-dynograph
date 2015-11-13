@@ -26,8 +26,14 @@
 
 #include <stinger.h>
 
-int load_benchmark_data_into_stinger (stinger_t * S, char * filename, char hooks);
-int load_raw_benchmark_data_into_stinger (stinger_t * S, char * filename);
-int print_fragmentation_stats (stinger_t * S, int64_t nv);
+int bench_load_undirected_graph_with_timestamps(stinger_t * S, char * filename);
+int bench_load_undirected_graph(stinger_t * S, char * filename);
 
+int bench_load_directed_graph_with_timestamps(stinger_t * S, char * filename);
+int bench_load_directed_graph(stinger_t * S, char * filename);
+
+int bench_insert_batch(stinger_t * S, char * filename);
+
+int bench_print_fragmentation_stats (stinger_t * S, int64_t nv);
+int load_edgelist (stinger_t * S, char * filename);
 #endif /* __STINGER_BENCH_H_ */

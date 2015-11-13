@@ -26,6 +26,7 @@
 #include "stinger.h"
 #include "xmalloc.h"
 #include "hooks.h"
+#include <stinger_bench.h>
 
 int
 load_raw_benchmark_data_into_stinger(stinger_t * S, char * filename)
@@ -50,7 +51,28 @@ load_raw_benchmark_data_into_stinger(stinger_t * S, char * filename)
 }
 
 int
-load_benchmark_data_into_stinger (stinger_t * S, char * filename, char hooks)
+load_benchmark_data_into_stinger (stinger_t * S, const char * filename, char hooks)
+{
+    printf("Loading: %s\n", filename);
+    if (strstr(filename, ".graph.el"))
+    {
+        return load_edgelist(S, filename);
+    }
+    else if (strstr(filename, ".graph.bin"))
+    {
+        uint64_t maxVtx;
+        return stinger_open_from_file(filename, S, &maxVtx);
+    }
+    else
+    {
+        printf("Unrecognized file extension for %s\n", filename);
+        return -1;
+    }
+}
+
+
+int
+load_edgelist (stinger_t * S, char * filename)
 {
     int64_t type = 0;
     int64_t weight = 10;
@@ -66,14 +88,13 @@ load_benchmark_data_into_stinger (stinger_t * S, char * filename, char hooks)
     int64_t src, dst;
     int64_t num_edges = 0;
 
-    printf("Loading: %s\n", filename);
-
-    while ( EOF != fscanf(fp, "%ld %ld\n", &src, &dst) ) {
+    while ( EOF != fscanf(fp, "%ld %ld %ld %ld\n", &src, &dst, &weight, &timestamp) ) {
         if (src < 0 && dst == 0) {  // delete vertex
             stinger_remove_vertex (S, -src);
         } else if (src < 0) {
             stinger_remove_edge(S,type,-src,dst);
         } else { // insert edge
+            // Change to incr_edge, are these directed graphs?
             stinger_insert_edge_pair (S, type, src, dst, weight, timestamp);
             num_edges++;
         }
@@ -84,8 +105,8 @@ load_benchmark_data_into_stinger (stinger_t * S, char * filename, char hooks)
     // consistency check
     printf("\n");
     printf("\tNumber of edges read: %ld\n", num_edges);
-    printf("\tNumber of STINGER vertices: %ld\n", stinger_num_active_vertices(S));
-    printf("\tNumber of STINGER edges: %ld\n", stinger_total_edges(S));
+    //printf("\tNumber of STINGER vertices: %ld\n", stinger_num_active_vertices(S));
+    //printf("\tNumber of STINGER edges: %ld\n", stinger_total_edges(S));
     //printf("\tConsistency: %ld (should be 0)\n", (long) stinger_consistency_check(S, STINGER_MAX_LVERTICES));
 
     return 0;

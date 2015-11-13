@@ -94,8 +94,6 @@ main (int argc, char ** argv)
   uint64_t nv = stinger_max_active_vertex (S);
   nv++;
 
-  print_fragmentation_stats (S, nv);
-
   /* auxiliary data structure */
   int64_t * marks = xmalloc (nv * sizeof(int64_t));
   int64_t * queue = xmalloc (nv * sizeof(int64_t));
