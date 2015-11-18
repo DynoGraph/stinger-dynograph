@@ -716,21 +716,17 @@ struct stinger *stinger_new_full (struct stinger_config_t * config)
   const size_t memory_size = (config->memory_size == 0) ? max_memsize_env : config->memory_size;
 
   size_t i;
-  int resized   = 0;
   struct stinger_size_t sizes;
 
   while (1) {
     sizes = calculate_stinger_size(nv, nebs, netypes, nvtypes);
-
+    LOG_I_A("STINGER will require %ld MB of memory (nv=%ldM, nebs=%ldM)...", sizes.size>>20, nv>>20, nebs>>20);
     if(sizes.size > (((uint64_t)memory_size * 3) / 4)) {
       if (config->no_resize) {
         LOG_E("STINGER does not fit in memory.  no_resize set, so exiting.");
         exit(-1);
       }
-      if(!resized) {
-        LOG_W_A("Resizing stinger to fit into memory (detected as %ld)", memory_size);
-      }
-      resized = 1;
+      LOG_W_A("Resizing stinger to fit into memory (detected as %ldMB)", memory_size>>20);
 
       nv    = (3*nv)/4;
       nebs  = STINGER_DEFAULT_NEB_FACTOR * nv;
@@ -738,8 +734,9 @@ struct stinger *stinger_new_full (struct stinger_config_t * config)
       break;
     }
   }
-
-  struct stinger *G = xcalloc (sizeof(struct stinger) + sizes.size, 1);
+  size_t final_size = sizeof(struct stinger) + sizes.size;
+  LOG_I_A("Allocating %ld MB for STINGER...", final_size>>20);
+  struct stinger *G = xcalloc (final_size, 1);
 
   G->max_nv       = nv;
   G->max_neblocks = nebs;
