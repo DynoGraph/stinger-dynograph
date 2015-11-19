@@ -12,7 +12,7 @@ int main(int argc, char **argv)
     stinger_t * S = stinger_new();
 
     // Load raw data in from file
-    load_benchmark_data_into_stinger (S, argv[1], 0);
+    load_graph(S, argv[1]);
 
     // Get number of vertices
     uint64_t num_vertices = stinger_max_active_vertex(S) + 1;

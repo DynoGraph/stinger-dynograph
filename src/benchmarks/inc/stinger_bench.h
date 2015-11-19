@@ -25,15 +25,33 @@
 #define STINGER_BENCH_H_
 
 #include <stinger.h>
+#include <stdbool.h>
 
-int bench_load_undirected_graph_with_timestamps(stinger_t * S, char * filename);
-int bench_load_undirected_graph(stinger_t * S, char * filename);
+struct preloaded_edge {
+    int64_t src;
+    int64_t dst;
+    int64_t weight;
+    int64_t timestamp;
+};
 
-int bench_load_directed_graph_with_timestamps(stinger_t * S, char * filename);
-int bench_load_directed_graph(stinger_t * S, char * filename);
+struct preloaded_edge_batch {
+    int64_t num_edges;
+    bool directed;
+    struct preloaded_edge edges[0];
+};
 
-int bench_insert_batch(stinger_t * S, char * filename);
+struct preloaded_edge_batches {
+    int64_t num_batches;
+    struct preloaded_edge_batch *batches[0];
+};
+
+
+void load_graph (stinger_t * S, const char * name);
+
+struct preloaded_edge_batches* preload_batches(const char* base_path);
+void insert_preloaded_batch(stinger_t * S, struct preloaded_edge_batch* batch);
+int load_edgelist (stinger_t * S, const char * filename);
 
 int bench_print_fragmentation_stats (stinger_t * S, int64_t nv);
-int load_edgelist (stinger_t * S, char * filename);
+
 #endif /* __STINGER_BENCH_H_ */

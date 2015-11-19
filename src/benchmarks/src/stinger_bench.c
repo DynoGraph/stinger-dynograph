@@ -27,52 +27,118 @@
 #include "xmalloc.h"
 #include "hooks.h"
 #include <stinger_bench.h>
+#include <glob.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-int
-load_raw_benchmark_data_into_stinger(stinger_t * S, char * filename)
+int64_t
+count_lines(const char* path)
 {
-    if (S != NULL)
+    FILE* fp = fopen(path, "r");
+    int64_t lines = 0;
+    while(!feof(fp))
     {
-        printf("Failed to load raw graph! Need an empty STINGER to load into.\n");
-        return -1;
+        int ch = fgetc(fp);
+        if(ch == '\n')
+        {
+            lines++;
+        }
     }
-    FILE* in = fopen(filename, "rb");
-    size_t size;
-    fread(&size, sizeof(size_t), 1, in);
-    S = xmalloc(size);
-    if (!fread(S, sizeof(stinger_t), 1, in))
-    {
-        printf("Failed to load raw graph! Possible STINGER version mismatch.\n");
-        return -1;
-    }
-    fclose(in);
-
-    return 0;
+    fclose(fp);
+    return lines;
 }
 
-int
-load_benchmark_data_into_stinger (stinger_t * S, const char * filename, char hooks)
+struct preloaded_edge_batch*
+preload_batch(const char* path)
 {
-    printf("Loading: %s\n", filename);
-    if (strstr(filename, ".graph.el"))
+    // Allocate memory for each line in the file
+    int64_t num_lines = count_lines(path);
+    struct preloaded_edge_batch *batch = malloc(
+        sizeof(struct preloaded_edge_batch) +
+        sizeof(struct preloaded_edge) * num_lines
+    );
+    batch->num_edges = num_lines;
+    batch->directed = false; // TODO detect directed/undirected somewhere
+    // Load the batch
+    printf("[DynoGraph] Preloading a batch of %ld edges from %s\n", num_lines, path);
+    FILE* fp = fopen(path, "r");
+    int rc = 0;
+    for (struct preloaded_edge* e = &batch->edges[0]; rc != EOF; ++e)
     {
-        return load_edgelist(S, filename);
+        rc = fscanf(fp, "%ld %ld %ld %ld\n", &e->src, &e->dst, &e->weight, &e->timestamp);
     }
-    else if (strstr(filename, ".graph.bin"))
-    {
-        uint64_t maxVtx;
-        return stinger_open_from_file(filename, S, &maxVtx);
-    }
-    else
-    {
-        printf("Unrecognized file extension for %s\n", filename);
-        return -1;
-    }
+    fclose(fp);
+    return batch;
 }
 
+struct preloaded_edge_batches*
+preload_batches(const char* base_path)
+{
+    // Use glob to get a list of all the batches
+    const char* suffix = ".batch???.graph.el";
+    char* pattern = malloc((strlen(base_path) + strlen(suffix) + 1) * sizeof(char));
+    strcpy(pattern, base_path);
+    strcat(pattern, suffix);
+    glob_t globbuf;
+    glob(pattern, GLOB_TILDE_CHECK, NULL, &globbuf);
 
+    // Load the batches
+    struct preloaded_edge_batches *batches = malloc(
+        sizeof(struct preloaded_edge_batches) +
+        sizeof(struct preloaded_edge_batch*) * globbuf.gl_pathc
+    );
+    batches->num_batches = globbuf.gl_pathc;
+    for (unsigned i = 0; i < batches->num_batches; ++i)
+    {
+        batches->batches[i] = preload_batch(globbuf.gl_pathv[i]);
+    }
+    // Clean up
+    globfree(&globbuf);
+    free(pattern);
+    return batches;
+}
+
+void
+insert_preloaded_batch(stinger_t * S, struct preloaded_edge_batch* batch)
+{
+    printf("[DynoGraph] Inserting batch of %ld edges\n", batch->num_edges);
+    int type = 0;
+    for (unsigned i = 0; i < batch->num_edges; ++i)
+    {
+        struct preloaded_edge* e = &batch->edges[i];
+        if (batch->directed)
+        {
+            stinger_insert_edge     (S, type, e->src, e->dst, e->weight, e->timestamp);
+        } else { // undirected
+            stinger_insert_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
+        }
+    }
+    free(batch);
+}
+
+void
+load_graph (stinger_t * S, const char * name)
+{
+    const char* suffix = ".graph.bin";
+    char* filename = malloc( strlen(name) + strlen(suffix) + 1);
+    strcpy(filename, name);
+    strcat(filename, suffix);
+    printf("[DynoGraph] Loading: %s\n", filename);
+
+    uint64_t maxVtx;
+    int rc = stinger_open_from_file(filename, S, &maxVtx);
+
+    if (rc == -1)
+    {
+        printf("[DynoGraph] Failed to open %s, exiting.", filename);
+        exit(1);
+    }
+    free(filename);
+}
+
+// Deprecated
 int
-load_edgelist (stinger_t * S, char * filename)
+load_edgelist (stinger_t * S, const char * filename)
 {
     int64_t type = 0;
     int64_t weight = 10;
@@ -81,7 +147,7 @@ load_edgelist (stinger_t * S, char * filename)
     FILE *fp = fopen(filename, "r");
 
     if (fp == NULL) {
-        printf("ERROR opening file: %s\n", filename);
+        printf("[DynoGraph] ERROR opening file: %s\n", filename);
         exit(-1);
     }
 
@@ -104,7 +170,7 @@ load_edgelist (stinger_t * S, char * filename)
 
     // consistency check
     printf("\n");
-    printf("\tNumber of edges read: %ld\n", num_edges);
+    printf("\t[DynoGraph] Number of edges read: %ld\n", num_edges);
     //printf("\tNumber of STINGER vertices: %ld\n", stinger_num_active_vertices(S));
     //printf("\tNumber of STINGER edges: %ld\n", stinger_total_edges(S));
     //printf("\tConsistency: %ld (should be 0)\n", (long) stinger_consistency_check(S, STINGER_MAX_LVERTICES));
