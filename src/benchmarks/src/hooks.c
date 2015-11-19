@@ -27,6 +27,8 @@
 
 #if defined(ENABLE_SNIPER_HOOKS)
     #include <hooks_base.h>
+    // Marks which iteration we are on
+    int sniper_hooks_iter_id = 0;
 #elif defined(ENABLE_GEM5_HOOKS)
     #include <util/m5/m5op.h>
 #elif defined(ENABLE_PIN_HOOKS)
@@ -36,6 +38,8 @@
 
     // Get the number of elements in a static array
     #define ARRAY_LENGTH(X) (sizeof(X)/sizeof(X[0]))
+
+    FILE* papi_output_file = NULL;
 
     typedef struct papi_counter
     {
@@ -113,11 +117,13 @@ int __attribute__ ((noinline)) bench_start() {
 
     #if defined(ENABLE_SNIPER_HOOKS)
         parmacs_roi_begin();
+        parmacs_iter_begin(sniper_hooks_iter_id);
     #elif defined(ENABLE_GEM5_HOOKS)
         m5_reset_stats(0,0);
     #elif defined(ENABLE_PIN_HOOKS)
         __asm__("");
     #elif defined(ENABLE_PAPI_HOOKS)
+        papi_output_file = fopen("/dev/stdout", "w");
         papi_start();
     #endif
 
@@ -126,6 +132,7 @@ int __attribute__ ((noinline)) bench_start() {
 
 int __attribute__ ((noinline)) bench_end() {
     #if defined(ENABLE_SNIPER_HOOKS)
+        parmacs_iter_end(sniper_hooks_iter_id);
         parmacs_roi_end();
     #elif defined(ENABLE_GEM5_HOOKS)
         m5_exit(0);
@@ -133,9 +140,26 @@ int __attribute__ ((noinline)) bench_end() {
         __asm__("");
     #elif defined(ENABLE_PAPI_HOOKS)
         papi_stop();
+        fclose(papi_output_file);
     #endif
 
     printf("[DynoGraph] Exiting ROI...\n");
     return 0;
 }
 
+int __attribute__ ((noinline)) bench_region() {
+    #if defined(ENABLE_SNIPER_HOOKS)
+        parmacs_iter_end(sniper_hooks_iter_id);
+        parmacs_iter_begin(++sniper_hooks_iter_id);
+    #elif defined(ENABLE_GEM5_HOOKS)
+        m5_dumpresetstats(0,0);
+    #elif defined(ENABLE_PIN_HOOKS)
+        __asm__("");
+    #elif defined(ENABLE_PAPI_HOOKS)
+        papi_stop();
+        papi_start();
+    #endif
+
+    printf("[DynoGraph] Entering new region...\n");
+    return 0;
+}

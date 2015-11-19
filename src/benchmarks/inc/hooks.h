@@ -22,5 +22,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// Marks the beginning of the region of interest
 int bench_start();
+// Marks the end of the region of interest
 int bench_end();
+// Marks the start of a new phase of computation
+int bench_region();
