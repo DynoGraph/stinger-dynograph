@@ -26,9 +26,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stinger.h>
-#include <stinger_bench.h>
 #include "xmalloc.h"
-
 
 stinger_t *
 bench_load_graph_with_timestamps(stinger_t * S, const char * filename, bool directed)
