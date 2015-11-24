@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     load_graph(S, argv[1]);
 
     // Get number of vertices
-    uint64_t num_vertices = stinger_max_active_vertex(S) + 1;
+    uint64_t num_vertices = stinger_max_nv(S) + 1;
 
     // Pre-allocate output data structures
     int64_t *component_map = xmalloc (num_vertices * sizeof(int64_t));

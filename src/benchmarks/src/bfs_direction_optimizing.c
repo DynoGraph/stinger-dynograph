@@ -152,7 +152,7 @@ main (int argc, char ** argv)
   }
 
   /* get number of vertices */
-  uint64_t nv = stinger_max_active_vertex (S);
+  uint64_t nv = stinger_max_nv (S);
   nv++;
 
   /* auxiliary data structure */

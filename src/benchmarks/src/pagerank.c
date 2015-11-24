@@ -18,11 +18,8 @@ int main(int argc, char **argv)
 
     struct preloaded_edge_batches* batches = preload_batches(argv[1]);
 
-/*
-    // Get number of vertices
-    uint64_t num_vertices = stinger_max_active_vertex(S) + 1;
-
     // Pre-allocate output data structures
+    uint64_t num_vertices = stinger_max_nv(S) + 1;
     double * pagerank_scores = xmalloc (num_vertices * sizeof(int64_t));
     double * pagerank_scores_tmp = xmalloc (num_vertices * sizeof(int64_t));
 */
