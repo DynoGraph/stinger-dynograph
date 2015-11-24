@@ -103,6 +103,7 @@ insert_preloaded_batch(stinger_t * S, struct preloaded_edge_batch* batch)
 {
     printf("[DynoGraph] Inserting batch of %ld edges\n", batch->num_edges);
     int type = 0;
+    OMP("omp parallel for")
     for (unsigned i = 0; i < batch->num_edges; ++i)
     {
         struct preloaded_edge* e = &batch->edges[i];
