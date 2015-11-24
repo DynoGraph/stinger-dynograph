@@ -11,12 +11,14 @@ int main(int argc, char **argv)
     // Create the stinger data structure
     stinger_t * S = stinger_new();
 
-    // Load raw data in from file
+    // Load graph data in from the file
     load_graph(S, argv[1]);
+    struct preloaded_edge_batches* batches = preload_batches(argv[1]);
 
     // Allocate pointers for return values
     int64_t *candidates = NULL;
     double *scores = NULL;
+    int64_t two_hop_size;
 
     // Allow override of source
     int64_t source = 0;
@@ -27,7 +29,14 @@ int main(int argc, char **argv)
 
     // Run the benchmark
     bench_start();
-    int64_t two_hop_size = adamic_adar(S, source, -1, &candidates, &scores);
+    two_hop_size = adamic_adar(S, source, -1, &candidates, &scores);
+    for (int64_t i = 0; i < batches->num_batches; ++i)
+    {
+        bench_region();
+        insert_preloaded_batch(S, batches->batches[i]);
+        bench_region();
+        two_hop_size = adamic_adar(S, source, -1, &candidates, &scores);
+    }
     bench_end();
 
     // Check for trivial problem size

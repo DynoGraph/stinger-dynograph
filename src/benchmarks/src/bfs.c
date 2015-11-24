@@ -1,8 +1,8 @@
 /*
  * GraphBench is a benchmark suite for
- *		microarchitectural simulation of streaming graph workloads
+ *      microarchitectural simulation of streaming graph workloads
  *
- * Copyright (C) 2014  Georgia Tech Research Institute
+ * Copyright (C) 2014    Georgia Tech Research Institute
  * Jason Poovey (jason.poovey@gtri.gatech.edu)
  * David Ediger (david.ediger@gtri.gatech.edu)
  * Eric Hein (eric.hein@gtri.gatech.edu)
@@ -15,11 +15,11 @@
 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.    See the
  * GNU General Public License for more details.
 
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.    If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stdint.h>
 
@@ -32,87 +32,95 @@
 // TODO Move this into stinger_alg
 int64_t
 parallel_breadth_first_search (struct stinger * S, int64_t nv,
-				      int64_t source, int64_t * marks,
-                                      int64_t * queue, int64_t * Qhead, int64_t * level)
+                            int64_t source, int64_t * marks,
+                    int64_t * queue, int64_t * Qhead, int64_t * level)
 {
-  for (int64_t i = 0; i < nv; i++) {
-    level[i] = -1;
-    marks[i] = 0;
-  }
-
-  int64_t nQ, Qnext, Qstart, Qend;
-  /* initialize */
-  queue[0] = source;
-  level[source] = 0;
-  marks[source] = 1;
-  Qnext = 1;  /* next open slot in the queue */
-  nQ = 1;     /* level we are currently processing */
-  Qhead[0] = 0;  /* beginning of the current frontier */
-  Qhead[1] = 1;  /* end of the current frontier */
-
-  Qstart = Qhead[nQ-1];
-  Qend = Qhead[nQ];
-
-  while (Qstart != Qend) {
-    OMP ("omp parallel for")
-    for (int64_t j = Qstart; j < Qend; j++) {
-      STINGER_FORALL_EDGES_OF_VTX_BEGIN (S, queue[j]) {
-	int64_t d = level[STINGER_EDGE_DEST];
-	if (d < 0) {
-	  if (stinger_int64_fetch_add (&marks[STINGER_EDGE_DEST], 1) == 0) {
-	    level[STINGER_EDGE_DEST] = nQ;
-
-	    int64_t mine = stinger_int64_fetch_add(&Qnext, 1);
-	    queue[mine] = STINGER_EDGE_DEST;
-	  }
-	}
-      } STINGER_FORALL_EDGES_OF_VTX_END();
+    for (int64_t i = 0; i < nv; i++) {
+        level[i] = -1;
+        marks[i] = 0;
     }
 
-    Qstart = Qhead[nQ-1];
-    Qend = Qnext;
-    Qhead[nQ++] = Qend;
-  }
+    int64_t nQ, Qnext, Qstart, Qend;
+    /* initialize */
+    queue[0] = source;
+    level[source] = 0;
+    marks[source] = 1;
+    Qnext = 1;    /* next open slot in the queue */
+    nQ = 1;         /* level we are currently processing */
+    Qhead[0] = 0;    /* beginning of the current frontier */
+    Qhead[1] = 1;    /* end of the current frontier */
 
-  return nQ;
+    Qstart = Qhead[nQ-1];
+    Qend = Qhead[nQ];
+
+    while (Qstart != Qend) {
+        OMP ("omp parallel for")
+        for (int64_t j = Qstart; j < Qend; j++) {
+            STINGER_FORALL_EDGES_OF_VTX_BEGIN (S, queue[j]) {
+                int64_t d = level[STINGER_EDGE_DEST];
+                if (d < 0) {
+                    if (stinger_int64_fetch_add (&marks[STINGER_EDGE_DEST], 1) == 0) {
+                        level[STINGER_EDGE_DEST] = nQ;
+
+                        int64_t mine = stinger_int64_fetch_add(&Qnext, 1);
+                        queue[mine] = STINGER_EDGE_DEST;
+                    }
+                }
+            } STINGER_FORALL_EDGES_OF_VTX_END();
+        }
+
+        Qstart = Qhead[nQ-1];
+        Qend = Qnext;
+        Qhead[nQ++] = Qend;
+    }
+
+    return nQ;
 }
+
 int
 main (int argc, char ** argv)
 {
-  stinger_t * S = stinger_new();
+    stinger_t * S = stinger_new();
 
-  /* insert your data now */
-  load_graph(S, argv[1]);
+    // Load graph data in from the file
+    load_graph(S, argv[1]);
+    struct preloaded_edge_batches* batches = preload_batches(argv[1]);
 
-  int64_t source_vertex = 3;
+    // Allow override of source vertex
+    int64_t source_vertex = 3;
+    if (argc > 2) {
+        source_vertex = atoll(argv[2]);
+    }
 
-  if (argc > 2) {
-      source_vertex = atoll(argv[2]);
-  }
+    // auxiliary data structures
+    uint64_t nv = stinger_max_nv (S);
+    int64_t * marks = xmalloc (nv * sizeof(int64_t));
+    int64_t * queue = xmalloc (nv * sizeof(int64_t));
+    int64_t * Qhead = xmalloc (nv * sizeof(int64_t));
+    int64_t * level = xmalloc (nv * sizeof(int64_t));
+    int64_t levels;
 
-  /* get number of vertices */
-  uint64_t nv = stinger_max_nv (S);
-  nv++;
+    // Run the benchmark
+    bench_start();
+    levels = parallel_breadth_first_search (S, nv, source_vertex, marks, queue, Qhead, level);
+    for (int64_t i = 0; i < batches->num_batches; ++i)
+    {
+        bench_region();
+        insert_preloaded_batch(S, batches->batches[i]);
+        bench_region();
+        levels = parallel_breadth_first_search (S, nv, source_vertex, marks, queue, Qhead, level);
+    }
+    bench_end();
 
-  /* auxiliary data structure */
-  int64_t * marks = xmalloc (nv * sizeof(int64_t));
-  int64_t * queue = xmalloc (nv * sizeof(int64_t));
-  int64_t * Qhead = xmalloc (nv * sizeof(int64_t));
-  int64_t * level = xmalloc (nv * sizeof(int64_t));
+    if (levels < 5)
+    {
+        printf("WARNING: Breadth-first search was only %ld levels.    Consider choosing a different source vertex.\n", levels);
+    }
 
-  /* the algorithm itself (timed) */
-  bench_start();
-  int64_t levels = parallel_breadth_first_search (S, nv, source_vertex, marks, queue, Qhead, level);
-  bench_end();
-  printf("Done.\n");
-
-  if (levels < 5)
-    printf("WARNING: Breadth-first search was only %ld levels.  Consider choosing a different source vertex.\n", levels);
-
-  free (level);
-  free (Qhead);
-  free (queue);
-  free (marks);
-  stinger_free_all (S);
-  return 0;
+    free (level);
+    free (Qhead);
+    free (queue);
+    free (marks);
+    stinger_free_all (S);
+    return 0;
 }

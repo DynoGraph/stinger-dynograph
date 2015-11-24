@@ -13,16 +13,22 @@ int main(int argc, char **argv)
 
     // Load raw data in from file
     load_graph(S, argv[1]);
-
-    // Get number of vertices
-    uint64_t num_vertices = stinger_max_nv(S) + 1;
+    struct preloaded_edge_batches* batches = preload_batches(argv[1]);
 
     // Pre-allocate output data structures
+    uint64_t num_vertices = stinger_max_nv(S);
     int64_t *num_triangles = xmalloc (num_vertices * sizeof(int64_t));
 
     // Run the benchmark
     bench_start();
     count_all_triangles(S, num_triangles);
+    for (int64_t i = 0; i < batches->num_batches; ++i)
+    {
+        bench_region();
+        insert_preloaded_batch(S, batches->batches[i]);
+        bench_region();
+        count_all_triangles(S, num_triangles);
+    }
     bench_end();
 
     // Clean up
