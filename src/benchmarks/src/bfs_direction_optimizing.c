@@ -70,7 +70,7 @@ parallel_breadth_first_search (struct stinger * S, int64_t nv,
             /* forward (top down) traversal */
             OMP ("omp parallel for")
             for (int64_t j = Qstart; j < Qend; j++) {
-                STINGER_FORALL_EDGES_OF_VTX_BEGIN (S, queue[j]) {
+                STINGER_FORALL_OUT_EDGES_OF_VTX_BEGIN (S, queue[j]) {
                     int64_t d = level[STINGER_EDGE_DEST];
                     if (d < 0) {
                         if (stinger_int64_fetch_add (&marks[STINGER_EDGE_DEST], 1) == 0) {
@@ -80,7 +80,7 @@ parallel_breadth_first_search (struct stinger * S, int64_t nv,
                             queue[mine] = STINGER_EDGE_DEST;
                         }
                     }
-                } STINGER_FORALL_EDGES_OF_VTX_END();
+                } STINGER_FORALL_OUT_EDGES_OF_VTX_END();
             }
         } else {
             /* reverse (bottom up) traversal */
@@ -89,7 +89,7 @@ parallel_breadth_first_search (struct stinger * S, int64_t nv,
                 int64_t done = 0;
                 /* only process unvisited vertices */
                 if (!marks[i]) {
-                    STINGER_FORALL_EDGES_OF_VTX_BEGIN (S, i) {
+                    STINGER_FORALL_OUT_EDGES_OF_VTX_BEGIN (S, i) {
                         /* neighbor has been visited */
                         if (!done && level[STINGER_EDGE_DEST] == nQ-1) {
                             level[i] = nQ;
@@ -100,7 +100,7 @@ parallel_breadth_first_search (struct stinger * S, int64_t nv,
                             queue[mine] = i;
                             done = 1;
                         }
-                    } STINGER_FORALL_EDGES_OF_VTX_END();
+                    } STINGER_FORALL_OUT_EDGES_OF_VTX_END();
                 }
             }
         }
