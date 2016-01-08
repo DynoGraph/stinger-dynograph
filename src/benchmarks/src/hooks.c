@@ -95,7 +95,7 @@
         }
         // Open the output file
         const char* papi_output_file = "/dev/stdout";
-        FILE* out = fopen(papi_output_file, "w");
+        FILE* out = fopen(papi_output_file, "a+");
         if (out == NULL) {
             printf("[DynoGraph] Error in PAPI: failed to open output file %s", papi_output_file);
             exit(1);
@@ -112,54 +112,32 @@
     }
 #endif
 
-int __attribute__ ((noinline)) bench_start() {
+int __attribute__ ((noinline)) hooks_region_begin() {
     printf("[DynoGraph] Entering ROI...\n");
-
     #if defined(ENABLE_SNIPER_HOOKS)
         parmacs_roi_begin();
-        parmacs_iter_begin(sniper_hooks_iter_id);
     #elif defined(ENABLE_GEM5_HOOKS)
         m5_reset_stats(0,0);
     #elif defined(ENABLE_PIN_HOOKS)
         __asm__("");
     #elif defined(ENABLE_PAPI_HOOKS)
-        papi_output_file = fopen("/dev/stdout", "w");
         papi_start();
     #endif
 
     return 0;
 }
 
-int __attribute__ ((noinline)) bench_end() {
+int __attribute__ ((noinline)) hooks_region_end() {
     #if defined(ENABLE_SNIPER_HOOKS)
-        parmacs_iter_end(sniper_hooks_iter_id);
         parmacs_roi_end();
     #elif defined(ENABLE_GEM5_HOOKS)
-        m5_exit(0);
+        m5_dumpreset_stats(0,0);
     #elif defined(ENABLE_PIN_HOOKS)
         __asm__("");
     #elif defined(ENABLE_PAPI_HOOKS)
         papi_stop();
-        fclose(papi_output_file);
     #endif
 
-    printf("[DynoGraph] Exiting ROI...\n");
-    return 0;
-}
-
-int __attribute__ ((noinline)) bench_region() {
-    #if defined(ENABLE_SNIPER_HOOKS)
-        parmacs_iter_end(sniper_hooks_iter_id);
-        parmacs_iter_begin(++sniper_hooks_iter_id);
-    #elif defined(ENABLE_GEM5_HOOKS)
-        m5_dumpresetstats(0,0);
-    #elif defined(ENABLE_PIN_HOOKS)
-        __asm__("");
-    #elif defined(ENABLE_PAPI_HOOKS)
-        papi_stop();
-        papi_start();
-    #endif
-
-    printf("[DynoGraph] Entering new region...\n");
+    printf("[DynoGraph] ...exited ROI\n");
     return 0;
 }
