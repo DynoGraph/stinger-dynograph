@@ -34,15 +34,12 @@ struct dynograph_preloaded_edge {
     int64_t timestamp;
 };
 
-struct dynograph_preloaded_edge_batch {
+struct dynograph_preloaded_edges {
     int64_t num_edges;
-    bool directed;
-    struct dynograph_preloaded_edge edges[0];
-};
-
-struct dynograph_preloaded_edge_batches {
     int64_t num_batches;
-    struct dynograph_preloaded_edge_batch *batches[0];
+    int64_t edges_per_batch;
+    int64_t directed;
+    struct dynograph_preloaded_edge edges[0];
 };
 
 void dynograph_message(const char* fmt, ...);
@@ -50,10 +47,11 @@ void dynograph_error(const char* fmt, ...);
 
 void dynograph_load_graph (stinger_t * S, const char * name);
 
-struct dynograph_preloaded_edge_batches* dynograph_preload_batches(const char* base_path);
-void dynograph_insert_preloaded_batch(stinger_t * S, struct dynograph_preloaded_edge_batch* batch);
-void dynograph_free_batches(struct dynograph_preloaded_edge_batches* batches);
-int64_t dynograph_get_timestamp_for_window(struct dynograph_preloaded_edge_batches *batches, int64_t batch_id, int64_t window_size);
+struct dynograph_preloaded_edges* dynograph_preload_edges(const char* path, int64_t num_batches);
+void dynograph_insert_preloaded_batch(stinger_t * S, struct dynograph_preloaded_edges* edges, int64_t batch_id);
+void dynograph_free_preloaded_edges(struct dynograph_preloaded_edges* batches);
+
+int64_t dynograph_get_timestamp_for_window(struct dynograph_preloaded_edges *batches, int64_t batch_id, int64_t window_size);
 
 int dynograph_print_fragmentation_stats (stinger_t * S, int64_t nv);
 void dynograph_print_graph_size(stinger_t *S, int64_t nv, int64_t modified_after);

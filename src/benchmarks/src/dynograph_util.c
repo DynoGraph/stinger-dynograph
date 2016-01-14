@@ -33,9 +33,13 @@
 #include <stdarg.h>
 
 int64_t
-count_lines(const char* path)
+dynograph_count_lines(const char* path)
 {
     FILE* fp = fopen(path, "r");
+    if (fp == NULL)
+    {
+        dynograph_error("Failed to open %s", path);
+    }
     int64_t lines = 0;
     while(!feof(fp))
     {
@@ -72,93 +76,78 @@ dynograph_error(const char* fmt, ...)
     exit(1);
 }
 
-struct dynograph_preloaded_edge_batch*
-dynograph_preload_batch(const char* path)
+struct dynograph_preloaded_edges*
+dynograph_preload_edges(const char* path, int64_t num_batches)
 {
-    // Allocate memory for each line in the file
-    int64_t num_lines = count_lines(path);
-    struct dynograph_preloaded_edge_batch *batch = malloc(
-        sizeof(struct dynograph_preloaded_edge_batch) +
-        sizeof(struct dynograph_preloaded_edge) * num_lines
+    // Sanity check
+    if (num_batches < 1)
+    {
+        dynograph_error("Need at least one batch");
+    }
+
+    dynograph_message("Counting lines in %s...", path);
+    int64_t num_edges = dynograph_count_lines(path);
+
+    struct dynograph_preloaded_edges *edges = malloc(
+        sizeof(struct dynograph_preloaded_edges) +
+        sizeof(struct dynograph_preloaded_edge) * num_edges
     );
-    batch->num_edges = num_lines;
-    batch->directed = false; // TODO detect directed/undirected somewhere
-    // Load the batch
-    dynograph_message("Preloading a batch of %ld edges from %s", num_lines, path);
+    edges->num_edges = num_edges;
+    edges->num_batches = num_batches;
+    edges->edges_per_batch = num_edges / num_batches; // Intentionally rounding down here
+    edges->directed = true; // FIXME detect this somehow
+
+    dynograph_message("Preloading %ld %s edges from %s...", edges->num_edges, edges->directed ? "directed" : "undirected", path);
+
     FILE* fp = fopen(path, "r");
     int rc = 0;
-    for (struct dynograph_preloaded_edge* e = &batch->edges[0]; rc != EOF; ++e)
+    // TODO buffer manually to avoid doing so many calls to fscanf
+    for (struct dynograph_preloaded_edge* e = &edges->edges[0]; rc != EOF; ++e)
     {
         rc = fscanf(fp, "%ld %ld %ld %ld\n", &e->src, &e->dst, &e->weight, &e->timestamp);
     }
     fclose(fp);
-    return batch;
-}
-
-struct dynograph_preloaded_edge_batches*
-dynograph_preload_batches(const char* base_path)
-{
-    // Use glob to get a list of all the batches
-    const char* suffix = ".batch???.graph.el";
-    char* pattern = malloc((strlen(base_path) + strlen(suffix) + 1) * sizeof(char));
-    strcpy(pattern, base_path);
-    strcat(pattern, suffix);
-    glob_t globbuf;
-    glob(pattern, GLOB_TILDE_CHECK, NULL, &globbuf);
-
-    // Load the batches
-    struct dynograph_preloaded_edge_batches *batches = malloc(
-        sizeof(struct dynograph_preloaded_edge_batches) +
-        sizeof(struct dynograph_preloaded_edge_batch*) * globbuf.gl_pathc
-    );
-    batches->num_batches = globbuf.gl_pathc;
-    for (unsigned i = 0; i < batches->num_batches; ++i)
-    {
-        batches->batches[i] = dynograph_preload_batch(globbuf.gl_pathv[i]);
-    }
-    // Clean up
-    globfree(&globbuf);
-    free(pattern);
-    return batches;
-}
-
-void
-dynograph_free_batches(struct dynograph_preloaded_edge_batches *batches)
-{
-    for (int64_t i = 0; i < batches->num_batches; ++i)
-    {
-        free(batches->batches[i]);
-    }
-    free(batches);
+    return edges;
 }
 
 int64_t
-dynograph_get_timestamp_for_window(struct dynograph_preloaded_edge_batches *batches, int64_t batch_id, int64_t window_size)
+dynograph_get_timestamp_for_window(struct dynograph_preloaded_edges *edges, int64_t batch_id, int64_t window_size)
 {
     int64_t modified_after = INT64_MIN;
     if (batch_id >= window_size)
     {
-        modified_after = batches->batches[batch_id - window_size]->edges[0].timestamp;
+        int64_t startEdge = (batch_id - window_size) * edges->edges_per_batch;
+        modified_after = edges->edges[startEdge].timestamp;
     }
     return modified_after;
 }
 
 void
-dynograph_insert_preloaded_batch(stinger_t * S, struct dynograph_preloaded_edge_batch* batch)
+dynograph_insert_preloaded_batch(stinger_t * S, struct dynograph_preloaded_edges* edges, int64_t batch_id)
 {
-    dynograph_message("Inserting batch of %ld edges", batch->num_edges);
-    int type = 0;
-    OMP("omp parallel for")
-    for (unsigned i = 0; i < batch->num_edges; ++i)
+    if (batch_id >= edges->num_batches)
     {
-        struct dynograph_preloaded_edge* e = &batch->edges[i];
-        if (batch->directed)
+        dynograph_error("Batch %i does not exist!", batch_id);
+    }
+    dynograph_message("Inserting batch %ld (%ld edges)", batch_id, edges->edges_per_batch);
+
+    int64_t begin = batch_id * edges->edges_per_batch;
+    int64_t end = (batch_id+1) * edges->edges_per_batch;
+    int type = 0;
+    int directed = edges->directed;
+    hooks_region_begin();
+    OMP("omp parallel for")
+    for (int64_t i = begin; i < end; ++i)
+    {
+        struct dynograph_preloaded_edge* e = &edges->edges[i];
+        if (directed)
         {
             stinger_insert_edge     (S, type, e->src, e->dst, e->weight, e->timestamp);
         } else { // undirected
             stinger_insert_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
         }
     }
+    hooks_region_end();
 }
 
 void
