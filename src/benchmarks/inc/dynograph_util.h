@@ -1,5 +1,5 @@
 /*
- * GraphBench is a benchmark suite for
+ * DynoGraph is a benchmark suite for
  *		microarchitectural simulation of streaming graph workloads
  *
  * Copyright (C) 2014  Georgia Tech Research Institute
@@ -21,37 +21,41 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#if !defined(STINGER_BENCH_H_)
-#define STINGER_BENCH_H_
+#if !defined(DYNOGRAPH_H_)
+#define DYNOGRAPH_H_
 
 #include <stinger.h>
 #include <stdbool.h>
 
-struct preloaded_edge {
+struct dynograph_preloaded_edge {
     int64_t src;
     int64_t dst;
     int64_t weight;
     int64_t timestamp;
 };
 
-struct preloaded_edge_batch {
+struct dynograph_preloaded_edge_batch {
     int64_t num_edges;
     bool directed;
-    struct preloaded_edge edges[0];
+    struct dynograph_preloaded_edge edges[0];
 };
 
-struct preloaded_edge_batches {
+struct dynograph_preloaded_edge_batches {
     int64_t num_batches;
-    struct preloaded_edge_batch *batches[0];
+    struct dynograph_preloaded_edge_batch *batches[0];
 };
 
+void dynograph_message(const char* fmt, ...);
+void dynograph_error(const char* fmt, ...);
 
-void load_graph (stinger_t * S, const char * name);
+void dynograph_load_graph (stinger_t * S, const char * name);
 
-struct preloaded_edge_batches* preload_batches(const char* base_path);
-void insert_preloaded_batch(stinger_t * S, struct preloaded_edge_batch* batch);
-int load_edgelist (stinger_t * S, const char * filename);
+struct dynograph_preloaded_edge_batches* dynograph_preload_batches(const char* base_path);
+void dynograph_insert_preloaded_batch(stinger_t * S, struct dynograph_preloaded_edge_batch* batch);
+void dynograph_free_batches(struct dynograph_preloaded_edge_batches* batches);
+int64_t dynograph_get_timestamp_for_window(struct dynograph_preloaded_edge_batches *batches, int64_t batch_id, int64_t window_size);
 
-int bench_print_fragmentation_stats (stinger_t * S, int64_t nv);
+int dynograph_print_fragmentation_stats (stinger_t * S, int64_t nv);
+void dynograph_print_graph_size(stinger_t *S, int64_t nv, int64_t modified_after);
 
-#endif /* __STINGER_BENCH_H_ */
+#endif /* __DYNOGRAPH_H_ */
