@@ -1,6 +1,7 @@
 set(sources
   src/adamic_adar.c
   src/betweenness.c
+  src/bfs.c
   src/clustering.c
   src/kcore.c
   src/pagerank.c
@@ -12,6 +13,7 @@ set(sources
 set(headers
   inc/adamic_adar.h
   inc/betweenness.h
+  inc/bfs.h
   inc/clustering.h
   inc/kcore.h
   inc/pagerank.h
