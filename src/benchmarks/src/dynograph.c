@@ -24,7 +24,6 @@ struct dynograph_args
 dynograph_get_args(int argc, char **argv)
 {
     struct dynograph_args args;
-    // Args: alg_name num_trials window_size
     if (argc != 5)
     {
         dynograph_error("Usage: alg_name input_path num_batches window_size");
@@ -32,9 +31,12 @@ dynograph_get_args(int argc, char **argv)
 
     args.alg_name = argv[1];
     args.input_path = argv[2];
-    // TODO validate input
-    args.window_size = atoll(argv[3]);
-    args.num_batches = atoll(argv[4]);
+    args.num_batches = atoll(argv[3]);
+    args.window_size = atoll(argv[4]);
+    if (args.num_batches < 1 || args.window_size < 1)
+    {
+        dynograph_error("num_batches and window_size must be positive");
+    }
     args.num_trials = 1;
     return args;
 }
