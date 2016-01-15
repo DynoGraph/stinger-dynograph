@@ -7,6 +7,6 @@
 #include "stinger_core/xmalloc.h"
 #include "stinger_core/stinger_error.h"
 
-void kcore_find(stinger_t *S, int64_t * labels, int64_t * counts, int64_t nv, int64_t * k_out);
+void kcore_find(stinger_t *S, int64_t * labels, int64_t * counts, int64_t nv, int64_t * k_out, int64_t modified_after);
 
 #endif

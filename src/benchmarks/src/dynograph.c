@@ -113,7 +113,7 @@ void dynograph_run_benchmark(const char *alg_name, stinger_t * S, int64_t num_ve
         int64_t levels;
         int64_t source_vertex = 3; // FIXME Get this from the command line
         hooks_region_begin();
-        levels = direction_optimizing_parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level);
+        levels = direction_optimizing_parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
         hooks_region_end();
         if (levels < 5)
         {
@@ -126,21 +126,21 @@ void dynograph_run_benchmark(const char *alg_name, stinger_t * S, int64_t num_ve
         int64_t *found_count =  (int64_t*)alg_data + 1 * max_nv;
         int64_t num_samples = 256; // FIXME Allow override from command line
         hooks_region_begin();
-        sample_search(S, num_vertices, num_samples, bc, found_count);
+        sample_search(S, num_vertices, num_samples, bc, found_count, modified_after);
         hooks_region_end();
     }
     else if (!strcmp(alg_name, "clustering"))
     {
         int64_t *num_triangles = (int64_t*) alg_data + 0 * max_nv;
         hooks_region_begin();
-        count_all_triangles(S, num_triangles);
+        count_all_triangles(S, num_triangles, modified_after);
         hooks_region_end();
     }
     else if (!strcmp(alg_name, "components"))
     {
         int64_t *component_map = (int64_t*) alg_data + 0 * max_nv;
         hooks_region_begin();
-        parallel_shiloach_vishkin_components(S, num_vertices, component_map);
+        parallel_shiloach_vishkin_components(S, num_vertices, component_map, modified_after);
         hooks_region_end();
     }
     else if (!strcmp(alg_name, "kcore"))
@@ -149,7 +149,7 @@ void dynograph_run_benchmark(const char *alg_name, stinger_t * S, int64_t num_ve
         int64_t *counts = (int64_t*) alg_data + 1 * max_nv;
         int64_t k = 0;
         hooks_region_begin();
-        kcore_find(S, labels, counts, num_vertices, &k);
+        kcore_find(S, labels, counts, num_vertices, &k, modified_after);
         hooks_region_end();
     }
     else if (!strcmp(alg_name, "pagerank"))

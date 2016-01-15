@@ -14,11 +14,11 @@ int compare (const void * a, const void * b)
 
 int64_t
 //count_intersections (stinger_t * S, int64_t a, int64_t b)
-count_intersections (stinger_t * S, int64_t a, int64_t b, int64_t * neighbors, int64_t d)
+count_intersections (stinger_t * S, int64_t a, int64_t b, int64_t * neighbors, int64_t d, int64_t modified_after)
 {
   size_t out = 0;
 
-  STINGER_FORALL_OUT_EDGES_OF_VTX_BEGIN(S, b) {
+  STINGER_FORALL_OUT_EDGES_OF_VTX_MODIFIED_AFTER_BEGIN(S, b, modified_after) {
 
     if (STINGER_EDGE_DEST != a) {
       int64_t first = 0;
@@ -40,7 +40,7 @@ count_intersections (stinger_t * S, int64_t a, int64_t b, int64_t * neighbors, i
       //out += stinger_has_typed_successor (S, 0, STINGER_EDGE_DEST, a);
     }
 
-  } STINGER_FORALL_OUT_EDGES_OF_VTX_END();
+  } STINGER_FORALL_OUT_EDGES_OF_VTX_MODIFIED_AFTER_END();
 
 
   return out;
@@ -48,7 +48,7 @@ count_intersections (stinger_t * S, int64_t a, int64_t b, int64_t * neighbors, i
 
 
 int64_t
-count_triangles (stinger_t * S, uint64_t v)
+count_triangles (stinger_t * S, uint64_t v, int64_t modified_after)
 {
   int64_t out = 0;
 
@@ -58,14 +58,14 @@ count_triangles (stinger_t * S, uint64_t v)
   stinger_gather_typed_successors(S, 0, v, &d, neighbors, deg);
   qsort(neighbors, d, sizeof(int64_t), compare);
 
-  STINGER_FORALL_OUT_EDGES_OF_VTX_BEGIN(S, v) {
+  STINGER_FORALL_OUT_EDGES_OF_VTX_MODIFIED_AFTER_BEGIN(S, v, modified_after) {
 
     if (STINGER_EDGE_DEST != v) {
       //out += count_intersections (S, v, STINGER_EDGE_DEST);
-      out += count_intersections (S, v, STINGER_EDGE_DEST, neighbors, d);
+      out += count_intersections (S, v, STINGER_EDGE_DEST, neighbors, d, modified_after);
     }
 
-  } STINGER_FORALL_OUT_EDGES_OF_VTX_END();
+  } STINGER_FORALL_OUT_EDGES_OF_VTX_MODIFIED_AFTER_END();
 
   free (neighbors);
 
@@ -74,10 +74,10 @@ count_triangles (stinger_t * S, uint64_t v)
 
 
 void
-count_all_triangles (stinger_t * S, int64_t * ntri)
+count_all_triangles (stinger_t * S, int64_t * ntri, int64_t modified_after)
 {
   OMP ("omp for schedule(dynamic,128)")
   for (size_t i = 0; i < S->max_nv; ++i){
-    ntri[i] = count_triangles (S, i);
+    ntri[i] = count_triangles (S, i, modified_after);
   }
 }

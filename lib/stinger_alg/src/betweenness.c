@@ -11,7 +11,7 @@
 #define PHASE_END -1
 
 void
-single_bc_search(stinger_t * S, int64_t nv, int64_t source, double * bc, int64_t * found_count)
+single_bc_search(stinger_t * S, int64_t nv, int64_t source, double * bc, int64_t * found_count, int64_t modified_after)
 {
 
     int64_t * paths = (int64_t * )xcalloc(nv * 3, sizeof(int64_t));
@@ -48,7 +48,7 @@ single_bc_search(stinger_t * S, int64_t nv, int64_t source, double * bc, int64_t
 
             //LOG_D_A("(%ld) TOS=%ld",source,v);
 
-            STINGER_FORALL_OUT_EDGES_OF_VTX_BEGIN(S, v) {
+            STINGER_FORALL_OUT_EDGES_OF_VTX_MODIFIED_AFTER_BEGIN(S, v, modified_after) {
                 //LOG_D_A("(%ld) Begin - d[%ld]=%ld paths[%ld]=%ld",source,STINGER_EDGE_DEST,d[STINGER_EDGE_DEST],STINGER_EDGE_DEST,paths[STINGER_EDGE_DEST]);
                 if(d[STINGER_EDGE_DEST] < 0) {
                     d[STINGER_EDGE_DEST]     = d_next;
@@ -63,7 +63,7 @@ single_bc_search(stinger_t * S, int64_t nv, int64_t source, double * bc, int64_t
                 }
                 //LOG_D_A("(%ld) End - d[%ld]=%ld paths[%ld]=%ld",source,STINGER_EDGE_DEST,d[STINGER_EDGE_DEST],STINGER_EDGE_DEST,paths[STINGER_EDGE_DEST]);
 
-            } STINGER_FORALL_OUT_EDGES_OF_VTX_END();
+            } STINGER_FORALL_OUT_EDGES_OF_VTX_MODIFIED_AFTER_END();
 
             index++;
         }
@@ -77,11 +77,11 @@ single_bc_search(stinger_t * S, int64_t nv, int64_t source, double * bc, int64_t
             int64_t w = bfs_stack[stack_top];
             double dsw = 0;
             int64_t sw = paths[w];
-            STINGER_FORALL_OUT_EDGES_OF_VTX_BEGIN(S, w) {
+            STINGER_FORALL_OUT_EDGES_OF_VTX_MODIFIED_AFTER_BEGIN(S, w, modified_after) {
                 if(d[w] == (d[STINGER_EDGE_DEST] - 1)) {
                     dsw += frac(sw,paths[STINGER_EDGE_DEST]) * (1.0 + partial[STINGER_EDGE_DEST]);
                 }
-            } STINGER_FORALL_OUT_EDGES_OF_VTX_END();
+            } STINGER_FORALL_OUT_EDGES_OF_VTX_MODIFIED_AFTER_END();
             partial[w] = dsw;
             bc[w] += dsw;
             stack_top--;
@@ -177,7 +177,7 @@ single_bc_search(stinger_t * S, int64_t nv, int64_t source, double * bc, int64_t
 #endif
 
 void
-sample_search(stinger_t * S, int64_t nv, int64_t nsamples, double * bc, int64_t * found_count)
+sample_search(stinger_t * S, int64_t nv, int64_t nsamples, double * bc, int64_t * found_count, int64_t modified_after)
 {
     LOG_V_A("  > Beginning with %ld vertices and %ld samples\n", (long)nv, (long)nsamples);
 
@@ -197,7 +197,7 @@ sample_search(stinger_t * S, int64_t nv, int64_t nsamples, double * bc, int64_t 
 
             OMP("omp for")
             for(int64_t s = 0; s < min; s++) {
-                single_bc_search(S, nv, s, partials, found_count);
+                single_bc_search(S, nv, s, partials, found_count, modified_after);
             }
         } else {
             OMP("omp for")
@@ -211,7 +211,7 @@ sample_search(stinger_t * S, int64_t nv, int64_t nsamples, double * bc, int64_t 
                     }
                 }
 
-                single_bc_search(S, nv, v, partials, found_count);
+                single_bc_search(S, nv, v, partials, found_count, modified_after);
             }
         }
 

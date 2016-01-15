@@ -6,7 +6,7 @@
  */
 int64_t
 parallel_shiloach_vishkin_components (struct stinger * S, int64_t nv,
-                                      int64_t * component_map)
+                                      int64_t * component_map, int64_t modified_after)
 {
   /* Initialize each vertex with its own component label in parallel */
   OMP ("omp parallel for")
@@ -22,6 +22,7 @@ parallel_shiloach_vishkin_components (struct stinger * S, int64_t nv,
        lesser component IDs to neighbors with greater component IDs */
     for(int64_t t = 0; t < S->max_netypes; t++) {
       STINGER_PARALLEL_FORALL_EDGES_BEGIN (S, t) {
+        if (STINGER_EDGE_TIME_RECENT < modified_after) { continue; }
         if (component_map[STINGER_EDGE_DEST] < component_map[STINGER_EDGE_SOURCE]) {
           component_map[STINGER_EDGE_SOURCE] = component_map[STINGER_EDGE_DEST];
           changed++;

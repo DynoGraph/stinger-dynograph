@@ -6,7 +6,7 @@
 #include "stinger_core/xmalloc.h"
 #include "stinger_core/stinger_error.h"
 
-void single_bc_search(stinger_t * S, int64_t nv, int64_t source, double * bc, int64_t * found_count);
-void sample_search(stinger_t * S, int64_t nv, int64_t nsamples, double * bc, int64_t * found_count);
+void single_bc_search(stinger_t * S, int64_t nv, int64_t source, double * bc, int64_t * found_count, int64_t modified_after);
+void sample_search(stinger_t * S, int64_t nv, int64_t nsamples, double * bc, int64_t * found_count, int64_t modified_after);
 
 #endif

@@ -25,7 +25,8 @@ direction_optimizing_parallel_breadth_first_search (
 	int64_t * marks,
 	int64_t * queue,
 	int64_t * Qhead,
-	int64_t * level
+	int64_t * level,
+	int64_t modified_after
 );
 
 #endif
