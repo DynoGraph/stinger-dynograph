@@ -113,7 +113,6 @@
 #endif
 
 int __attribute__ ((noinline)) hooks_region_begin() {
-    printf("[DynoGraph] Entering ROI...\n");
     #if defined(ENABLE_SNIPER_HOOKS)
         parmacs_roi_begin();
     #elif defined(ENABLE_GEM5_HOOKS)
@@ -138,6 +137,5 @@ int __attribute__ ((noinline)) hooks_region_end() {
         papi_stop();
     #endif
 
-    printf("[DynoGraph] ...exited ROI\n");
     return 0;
 }
