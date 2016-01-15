@@ -47,6 +47,7 @@ struct dynograph_benchmark
     int64_t data_per_vertex;
     // Number of optional args?
 } dynograph_benchmarks[] = {
+    {"all", 4}, // Must be = max(data_per_vertex) of all other algorithms
     {"bfs", 4},
     {"bfs-do", 4},
     {"betweenness", 2},
@@ -79,7 +80,15 @@ void dynograph_run_benchmark(const char *alg_name, stinger_t * S, int64_t num_ve
 {
     dynograph_message("Running %s...", alg_name);
     int64_t max_nv = stinger_max_nv(S);
-    if (!strcmp(alg_name, "bfs"))
+
+    if (!strcmp(alg_name, "all"))
+    {
+        for (int i = 1; i < sizeof(dynograph_benchmarks) / sizeof(dynograph_benchmarks[0]); ++i)
+        {
+            dynograph_run_benchmark(dynograph_benchmarks[i].name, S, num_vertices, alg_data, modified_after);
+        }
+    }
+    else if (!strcmp(alg_name, "bfs"))
     {
         int64_t * marks = (int64_t*)alg_data + 0 * max_nv;
         int64_t * queue = (int64_t*)alg_data + 1 * max_nv;
