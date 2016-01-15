@@ -94,21 +94,21 @@
             exit(1);
         }
         // Open the output file
-        const char* papi_output_file = "/dev/stdout";
-        FILE* out = fopen(papi_output_file, "a+");
-        if (out == NULL) {
-            printf("[DynoGraph] Error in PAPI: failed to open output file %s", papi_output_file);
-            exit(1);
-        }
+        //const char* papi_output_file = "/dev/stdout";
+        //FILE* out = fopen(papi_output_file, "a+");
+        //if (out == NULL) {
+        //    printf("[DynoGraph] Error in PAPI: failed to open output file %s", papi_output_file);
+        //    exit(1);
+        //}
         // Write the output as JSON
-        fprintf(out, "{");
+        printf("{");
         for (int i = 0; i < papi_num_events; ++i)
         {
-            fprintf(out, "\n\t\"%s\":%lli", papi_counters[i].name, papi_values[i]);
-            if (i != papi_num_events - 1) { fprintf(out, ","); }
+            printf("\n\t\"%s\":%lli", papi_counters[i].name, papi_values[i]);
+            if (i != papi_num_events - 1) { printf(","); }
         }
-        fprintf(out, "\n}\n");
-        fclose(out);
+        printf("\n}\n");
+        // fclose(out);
     }
 #endif
 
