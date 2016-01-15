@@ -162,7 +162,7 @@ int main(int argc, char **argv)
     // Create the stinger data structure
     stinger_t * S = stinger_new();
     // Load graph data in from the file in batches
-    struct dynograph_preloaded_edges* edges = dynograph_preload_edges(args.input_path, 10);
+    struct dynograph_preloaded_edges* edges = dynograph_preload_edges(args.input_path, args.num_batches);
     // Look up the algorithm that will be benchmarked
     struct dynograph_benchmark *b = dynograph_get_benchmark(args.alg_name);
     // Allocate data structures for the algorithm
