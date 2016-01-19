@@ -24,20 +24,21 @@ struct dynograph_args
 dynograph_get_args(int argc, char **argv)
 {
     struct dynograph_args args;
-    if (argc != 5)
+    if (argc != 6)
     {
-        dynograph_error("Usage: alg_name input_path num_batches window_size");
+        dynograph_error("Usage: alg_name input_path num_batches window_size num_trials \n");
     }
 
     args.alg_name = argv[1];
     args.input_path = argv[2];
     args.num_batches = atoll(argv[3]);
     args.window_size = atoll(argv[4]);
-    if (args.num_batches < 1 || args.window_size < 1)
+    args.num_trials = atoll(argv[5]);
+    if (args.num_batches < 1 || args.window_size < 1 || args.num_trials < 1)
     {
-        dynograph_error("num_batches and window_size must be positive");
+        dynograph_error("num_batches, window_size, and num_trials must be positive");
     }
-    args.num_trials = 1;
+
     return args;
 }
 
@@ -170,19 +171,20 @@ int main(int argc, char **argv)
 {
     // Process command line arguments
     struct dynograph_args args = dynograph_get_args(argc, argv);
-    // Create the stinger data structure
-    stinger_t * S = stinger_new();
     // Load graph data in from the file in batches
     struct dynograph_preloaded_edges* edges = dynograph_preload_edges(args.input_path, args.num_batches);
     // Look up the algorithm that will be benchmarked
     struct dynograph_benchmark *b = dynograph_get_benchmark(args.alg_name);
-    // Allocate data structures for the algorithm
-    uint64_t num_vertices = stinger_max_nv(S);
-    void *alg_data = xcalloc(sizeof(int64_t) * b->data_per_vertex, num_vertices);
 
-    int64_t numTrials = args.num_trials;
-    for (int64_t trial = 0; trial < numTrials; trial++)
+    for (int64_t trial = 0; trial < args.num_trials; trial++)
     {
+        // Create the stinger data structure
+        stinger_t * S = stinger_new();
+        // Allocate data structures for the algorithm(s)
+        uint64_t num_vertices = stinger_max_nv(S);
+        void *alg_data = xcalloc(sizeof(int64_t) * b->data_per_vertex, num_vertices);
+
+        // Run the algorithm(s) after each inserted batch
         for (int64_t i = 0; i < edges->num_batches; ++i)
         {
             dynograph_insert_preloaded_batch(S, edges, i);
@@ -191,12 +193,12 @@ int main(int argc, char **argv)
             dynograph_run_benchmark(b->name, S, num_vertices, alg_data, modified_after);
             dynograph_print_graph_size(S, num_vertices, modified_after);
         }
-        // TODO clear out stinger data structure
+        // Clean up
+        free(alg_data);
+        stinger_free(S);
     }
 
-    // Clean up
-    free(alg_data);
     free(edges);
-    stinger_free_all (S);
+
     return 0;
 }
