@@ -32,27 +32,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-int64_t
-dynograph_count_lines(const char* path)
-{
-    FILE* fp = fopen(path, "r");
-    if (fp == NULL)
-    {
-        dynograph_error("Failed to open %s", path);
-    }
-    int64_t lines = 0;
-    while(!feof(fp))
-    {
-        int ch = fgetc(fp);
-        if(ch == '\n')
-        {
-            lines++;
-        }
-    }
-    fclose(fp);
-    return lines;
-}
-
 void
 dynograph_message(const char* fmt, ...)
 {
@@ -77,14 +56,61 @@ dynograph_error(const char* fmt, ...)
 }
 
 struct dynograph_preloaded_edges*
-dynograph_preload_edges(const char* path, int64_t num_batches)
+dynograph_preload_edges_binary(const char* path, int64_t num_batches)
 {
-    // Sanity check
-    if (num_batches < 1)
+    dynograph_message("Checking file size of %s...", path);
+    FILE* fp = fopen(path, "rb");
+    struct stat st;
+    if (stat(path, &st) != 0)
     {
-        dynograph_error("Need at least one batch");
+        dynograph_error("Failed to stat %s", path);
     }
+    int64_t num_edges = st.st_size / sizeof(struct dynograph_preloaded_edge);
 
+    struct dynograph_preloaded_edges *edges = malloc(
+        sizeof(struct dynograph_preloaded_edges) +
+        sizeof(struct dynograph_preloaded_edge) * num_edges
+    );
+    edges->num_edges = num_edges;
+    edges->num_batches = num_batches;
+    edges->edges_per_batch = num_edges / num_batches; // Intentionally rounding down here
+    edges->directed = true; // FIXME detect this somehow
+
+    dynograph_message("Preloading %ld %s edges from %s...", edges->num_edges, edges->directed ? "directed" : "undirected", path);
+
+    size_t rc = fread(&edges->edges, sizeof(struct dynograph_preloaded_edge), num_edges, fp);
+    if (rc != num_edges)
+    {
+        dynograph_error("Failed to load graph from %s",path);
+    }
+    fclose(fp);
+    return edges;
+}
+
+int64_t
+dynograph_count_lines(const char* path)
+{
+    FILE* fp = fopen(path, "r");
+    if (fp == NULL)
+    {
+        dynograph_error("Failed to open %s", path);
+    }
+    int64_t lines = 0;
+    while(!feof(fp))
+    {
+        int ch = fgetc(fp);
+        if(ch == '\n')
+        {
+            lines++;
+        }
+    }
+    fclose(fp);
+    return lines;
+}
+
+struct dynograph_preloaded_edges*
+dynograph_preload_edges_ascii(const char* path, int64_t num_batches)
+{
     dynograph_message("Counting lines in %s...", path);
     int64_t num_edges = dynograph_count_lines(path);
 
@@ -108,6 +134,32 @@ dynograph_preload_edges(const char* path, int64_t num_batches)
     }
     fclose(fp);
     return edges;
+}
+
+bool
+dynograph_file_is_binary(const char* path)
+{
+    const char* suffix = ".graph.bin";
+    size_t path_len = strlen(path);
+    size_t suffix_len = strlen(suffix);
+    return !strcmp(path + path_len - suffix_len, suffix);
+}
+
+struct dynograph_preloaded_edges*
+dynograph_preload_edges(const char* path, int64_t num_batches)
+{
+    // Sanity check
+    if (num_batches < 1)
+    {
+        dynograph_error("Need at least one batch");
+    }
+
+    if (dynograph_file_is_binary(path))
+    {
+        return dynograph_preload_edges_binary(path, num_batches);
+    } else {
+        return dynograph_preload_edges_ascii(path, num_batches);
+    }
 }
 
 int64_t
@@ -150,25 +202,6 @@ dynograph_insert_preloaded_batch(stinger_t * S, struct dynograph_preloaded_edges
     hooks_region_end();
 }
 
-void
-dynograph_load_graph (stinger_t * S, const char * name)
-{
-    const char* suffix = ".graph.bin";
-    char* filename = malloc( strlen(name) + strlen(suffix) + 1);
-    strcpy(filename, name);
-    strcat(filename, suffix);
-    dynograph_message("Loading: %s", filename);
-
-    uint64_t maxVtx;
-    int rc = stinger_open_from_file(filename, S, &maxVtx);
-
-    if (rc == -1)
-    {
-        dynograph_error("Failed to open %s, exiting.", filename);
-    }
-    free(filename);
-}
-
 // Counts the number of edges that satsify the filter
 int64_t
 dynograph_filtered_edge_count (struct stinger * S, int64_t nv, int64_t modified_after)
@@ -199,7 +232,7 @@ dynograph_print_fragmentation_stats (stinger_t * S, int64_t nv)
 {
   struct stinger_fragmentation_t * stats = xmalloc(sizeof(struct stinger_fragmentation_t));
   stinger_fragmentation (S, nv, stats);
-
+  // TODO dump this as JSON and integrate with print_graph_size
   dynograph_message("\tNumber of holes: %ld", stats->num_empty_edges);
   dynograph_message("\tNumber of fragmented edge blocks: %ld", stats->num_fragmented_blocks);
   dynograph_message("\tNumber of edge blocks in use: %ld", stats->edge_blocks_in_use);

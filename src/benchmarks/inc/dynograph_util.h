@@ -26,6 +26,7 @@
 
 #include <stinger.h>
 #include <stdbool.h>
+#include <sys/stat.h>
 
 struct dynograph_preloaded_edge {
     int64_t src;
@@ -44,8 +45,6 @@ struct dynograph_preloaded_edges {
 
 void dynograph_message(const char* fmt, ...);
 void dynograph_error(const char* fmt, ...);
-
-void dynograph_load_graph (stinger_t * S, const char * name);
 
 struct dynograph_preloaded_edges* dynograph_preload_edges(const char* path, int64_t num_batches);
 void dynograph_insert_preloaded_batch(stinger_t * S, struct dynograph_preloaded_edges* edges, int64_t batch_id);
