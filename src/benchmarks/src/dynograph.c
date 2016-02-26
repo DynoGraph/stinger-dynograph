@@ -11,7 +11,7 @@
 #include <kcore.h>
 #include <pagerank.h>
 
-struct dynograph_args
+struct args
 {
     const char* alg_name;
     const char* input_path;
@@ -20,10 +20,10 @@ struct dynograph_args
     int64_t num_trials;
 };
 
-struct dynograph_args
-dynograph_get_args(int argc, char **argv)
+struct args
+get_args(int argc, char **argv)
 {
-    struct dynograph_args args;
+    struct args args;
     if (argc != 6)
     {
         dynograph_error("Usage: alg_name input_path num_batches window_size num_trials \n");
@@ -42,12 +42,65 @@ dynograph_get_args(int argc, char **argv)
     return args;
 }
 
-struct dynograph_benchmark
+// Counts the number of edges that satsify the filter
+int64_t
+filtered_edge_count (struct stinger * S, int64_t nv, int64_t modified_after)
+{
+    int64_t num_edges = 0;
+
+    OMP ("omp parallel for reduction(+:num_edges)")
+    for (int64_t v = 0; v < nv; v++) {
+        STINGER_FORALL_OUT_EDGES_OF_VTX_MODIFIED_AFTER_BEGIN (S, v, modified_after) {
+            num_edges += 1;
+        } STINGER_FORALL_OUT_EDGES_OF_VTX_MODIFIED_AFTER_END();
+    }
+
+    return num_edges;
+}
+
+void print_graph_stats(stinger_t *S, int64_t nv, int64_t modified_after)
+{
+    struct stinger_fragmentation_t * stats = xmalloc(sizeof(struct stinger_fragmentation_t));
+    stinger_fragmentation (S, nv, stats);
+    printf("{\n");
+    printf("\"num_vertices\"            :%ld,\n", nv);
+    printf("\"num_filtered_edges\"      :%ld,\n", filtered_edge_count(S, nv, modified_after));
+    printf("\"num_edges\"               :%ld,\n", stats->num_edges);
+    printf("\"num_empty_edges\"         :%ld,\n", stats->num_empty_edges);
+    printf("\"num_fragmented_blocks\"   :%ld,\n", stats->num_fragmented_blocks);
+    printf("\"edge_blocks_in_use\"      :%ld,\n", stats->edge_blocks_in_use);
+    printf("\"num_empty_blocks          :%ld\n" , stats->num_empty_blocks);
+    printf("}\n");
+    free(stats);
+}
+
+void
+insert_batch(stinger_t * S, const struct dynograph_edge_batch batch)
+{
+    const int64_t type = 0;
+    const int64_t num_edges = batch.num_edges;
+    const int64_t directed = batch.directed;
+    hooks_region_begin();
+    OMP("omp parallel for")
+    for (int64_t i = 0; i < num_edges; ++i)
+    {
+        const struct dynograph_edge* e = &batch.edges[i];
+        if (directed)
+        {
+            stinger_insert_edge     (S, type, e->src, e->dst, e->weight, e->timestamp);
+        } else { // undirected
+            stinger_insert_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
+        }
+    }
+    hooks_region_end();
+}
+
+struct benchmark
 {
     const char *name;
     int64_t data_per_vertex;
     // Number of optional args?
-} dynograph_benchmarks[] = {
+} benchmarks[] = {
     {"all", 4}, // Must be = max(data_per_vertex) of all other algorithms
     {"bfs", 4},
     {"bfs-do", 4},
@@ -58,15 +111,15 @@ struct dynograph_benchmark
     {"pagerank", 2}
 };
 
-struct dynograph_benchmark *
-dynograph_get_benchmark(const char *name)
+struct benchmark *
+get_benchmark(const char *name)
 {
-    struct dynograph_benchmark *b = NULL;
-    for (int i = 0; i < sizeof(dynograph_benchmarks) / sizeof(dynograph_benchmarks[0]); ++i)
+    struct benchmark *b = NULL;
+    for (int i = 0; i < sizeof(benchmarks) / sizeof(benchmarks[0]); ++i)
     {
-        if (!strcmp(dynograph_benchmarks[i].name, name))
+        if (!strcmp(benchmarks[i].name, name))
         {
-            b = &dynograph_benchmarks[i];
+            b = &benchmarks[i];
             break;
         }
     }
@@ -77,16 +130,16 @@ dynograph_get_benchmark(const char *name)
     return b;
 }
 
-void dynograph_run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, void *alg_data, int64_t modified_after)
+void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, void *alg_data, int64_t modified_after)
 {
     dynograph_message("Running %s...", alg_name);
     int64_t max_nv = stinger_max_nv(S);
 
     if (!strcmp(alg_name, "all"))
     {
-        for (int i = 1; i < sizeof(dynograph_benchmarks) / sizeof(dynograph_benchmarks[0]); ++i)
+        for (int i = 1; i < sizeof(benchmarks) / sizeof(benchmarks[0]); ++i)
         {
-            dynograph_run_benchmark(dynograph_benchmarks[i].name, S, num_vertices, alg_data, modified_after);
+            run_benchmark(benchmarks[i].name, S, num_vertices, alg_data, modified_after);
         }
     }
     else if (!strcmp(alg_name, "bfs"))
@@ -170,11 +223,11 @@ void dynograph_run_benchmark(const char *alg_name, stinger_t * S, int64_t num_ve
 int main(int argc, char **argv)
 {
     // Process command line arguments
-    struct dynograph_args args = dynograph_get_args(argc, argv);
+    struct args args = get_args(argc, argv);
     // Load graph data in from the file in batches
-    struct dynograph_preloaded_edges* edges = dynograph_preload_edges(args.input_path, args.num_batches);
+    struct dynograph_dataset* dataset = dynograph_load_dataset(args.input_path, args.num_batches);
     // Look up the algorithm that will be benchmarked
-    struct dynograph_benchmark *b = dynograph_get_benchmark(args.alg_name);
+    struct benchmark *b = get_benchmark(args.alg_name);
 
     for (int64_t trial = 0; trial < args.num_trials; trial++)
     {
@@ -185,20 +238,22 @@ int main(int argc, char **argv)
         void *alg_data = xcalloc(sizeof(int64_t) * b->data_per_vertex, num_vertices);
 
         // Run the algorithm(s) after each inserted batch
-        for (int64_t i = 0; i < edges->num_batches; ++i)
+        for (int64_t i = 0; i < dataset->num_batches; ++i)
         {
-            dynograph_insert_preloaded_batch(S, edges, i);
-            int64_t modified_after = dynograph_get_timestamp_for_window(edges, i, args.window_size);
+            struct dynograph_edge_batch batch = dynograph_get_batch(dataset, i);
+            dynograph_message("Inserting batch %i (%ld edges)", i, batch.num_edges);
+            insert_batch(S, batch);
+            int64_t modified_after = dynograph_get_timestamp_for_window(dataset, i, args.window_size);
             num_vertices = stinger_max_active_vertex(S) + 1; // TODO faster way to get this?
-            dynograph_run_benchmark(b->name, S, num_vertices, alg_data, modified_after);
-            dynograph_print_graph_size(S, num_vertices, modified_after);
+            run_benchmark(b->name, S, num_vertices, alg_data, modified_after);
+            print_graph_stats(S, num_vertices, modified_after);
         }
         // Clean up
         free(alg_data);
         stinger_free(S);
     }
 
-    free(edges);
+    dynograph_free_dataset(dataset);
 
     return 0;
 }
