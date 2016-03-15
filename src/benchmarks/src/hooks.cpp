@@ -33,6 +33,29 @@
     #include <util/m5/m5op.h>
 #elif defined(ENABLE_PIN_HOOKS)
     // Nothing to include here
+#elif defined(ENABLE_PERF_HOOKS)
+    #include <perf.h>
+    #include <omp.h>
+    static gBenchPerf_event perf_events(
+        "--perf-event "
+        "perf::PERF_COUNT_HW_INSTRUCTIONS "
+        "perf::PERF_COUNT_HW_CACHE_L1D:READ:ACCESS "
+        "perf::PERF_COUNT_HW_CACHE_L1D:WRITE:ACCESS "
+        "perf::PERF_COUNT_HW_CPU_CYCLES "
+        "perf::PERF_COUNT_HW_CACHE_L1D:READ:MISS "
+        "perf::PERF_COUNT_HW_CACHE_L1D:WRITE:MISS "
+        "snb_ep::OFFCORE_REQUESTS:ALL_DATA_RD:k=1:u=1:e=0:i=0:c=0:t=0 "
+        "perf::PERF_COUNT_HW_CACHE_LL:READ:ACCESS "
+        "perf::PERF_COUNT_HW_CACHE_LL:READ:MISS "
+        "snb_ep::BR_MISP_RETIRED:ALL_BRANCHES:k=1:u=1:e=0:i=0:c=0:t=0 "
+        "perf::PERF_COUNT_HW_CACHE_LL:WRITE:ACCESS "
+        "perf::PERF_COUNT_HW_CACHE_LL:WRITE:MISS "
+        "snb_ep::BR_INST_RETIRED:ALL_BRANCHES:k=1:u=1:e=0:i=0:c=0:t=0 "
+        "perf::PERF_COUNT_HW_CACHE_LL:PREFETCH:ACCESS "
+        "perf::PERF_COUNT_HW_CACHE_LL:PREFETCH:MISS "
+    );
+    static gBenchPerf_multi perf(omp_get_max_threads(), perf_events);
+
 #elif defined(ENABLE_PAPI_HOOKS)
     #include <papi.h>
 
@@ -112,13 +135,20 @@
     }
 #endif
 
-int __attribute__ ((noinline)) hooks_region_begin() {
+int __attribute__ ((noinline)) hooks_region_begin(int64_t trial) {
     #if defined(ENABLE_SNIPER_HOOKS)
         parmacs_roi_begin();
     #elif defined(ENABLE_GEM5_HOOKS)
         m5_reset_stats(0,0);
     #elif defined(ENABLE_PIN_HOOKS)
         __asm__("");
+    #elif defined(ENABLE_PERF_HOOKS)
+        #pragma omp parallel
+        {
+            unsigned tid = omp_get_thread_num();
+            perf.open(tid, trial);
+            perf.start(tid, trial);
+        }
     #elif defined(ENABLE_PAPI_HOOKS)
         papi_start();
     #endif
@@ -126,13 +156,20 @@ int __attribute__ ((noinline)) hooks_region_begin() {
     return 0;
 }
 
-int __attribute__ ((noinline)) hooks_region_end() {
+int __attribute__ ((noinline)) hooks_region_end(int64_t trial) {
     #if defined(ENABLE_SNIPER_HOOKS)
         parmacs_roi_end();
     #elif defined(ENABLE_GEM5_HOOKS)
         m5_dumpreset_stats(0,0);
     #elif defined(ENABLE_PIN_HOOKS)
         __asm__("");
+    #elif defined(ENABLE_PERF_HOOKS)
+        #pragma omp parallel
+        {
+            unsigned tid = omp_get_thread_num();
+            perf.stop(tid, trial);
+        }
+        perf.print(trial);
     #elif defined(ENABLE_PAPI_HOOKS)
         papi_stop();
     #endif

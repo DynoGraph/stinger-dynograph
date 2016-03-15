@@ -30,6 +30,12 @@ elseif (HOOKS_TYPE STREQUAL "GEM5")
 elseif (HOOKS_TYPE STREQUAL "PIN")
 	add_definitions(-DENABLE_PIN_HOOKS)
 
+elseif (HOOKS_TYPE STREQUAL "PERF")
+	add_definitions(-DENABLE_PERF_HOOKS)
+	find_package( PERFMON REQUIRED )
+	include_directories(${PERFMON_INCLUDE_DIRS})
+	set(BENCHMARK_LIBS "${PERFMON_LIBRARIES}")
+
 elseif (HOOKS_TYPE STREQUAL "PAPI")
 	add_definitions(-DENABLE_PAPI_HOOKS)
 	find_package( PAPI REQUIRED )
@@ -59,6 +65,7 @@ endif()
 
 # Use the gnu9x C standard
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu9x")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 # Memory size configuration bits for stinger_core
 set(STINGER_DEFAULT_VERTICES "(1L<<24)" CACHE STRING "Default number of vertices")
