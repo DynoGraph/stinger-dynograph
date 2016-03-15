@@ -34,7 +34,7 @@ elseif (HOOKS_TYPE STREQUAL "PERF")
 	add_definitions(-DENABLE_PERF_HOOKS)
 	find_package( PERFMON REQUIRED )
 	include_directories(${PERFMON_INCLUDE_DIRS})
-	set(BENCHMARK_LIBS "${PERFMON_LIBRARIES}")
+	set(BENCHMARK_LIBS "pfm_cxx;${PERFMON_LIBRARIES}")
 
 elseif (HOOKS_TYPE STREQUAL "PAPI")
 	add_definitions(-DENABLE_PAPI_HOOKS)

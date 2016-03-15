@@ -15,9 +15,9 @@
 
 #include <perfmon/pfmlib_perf_event.h>
 
-static pfm_cxx& getInstance()
+pfm_cxx& pfm_cxx::getInstance()
 {
-    static pfm instance;
+    static pfm_cxx instance;
     return instance;
 }
 
