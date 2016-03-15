@@ -1,7 +1,9 @@
 #include <stdint.h>
 
-#include <dynograph_util.h>
 #include <hooks.h>
+
+extern "C" {
+#include <dynograph_util.h>
 
 #include <stinger.h>
 #include <bfs.h>
@@ -10,6 +12,7 @@
 #include <static_components.h>
 #include <kcore.h>
 #include <pagerank.h>
+}
 
 struct args
 {
@@ -60,7 +63,7 @@ filtered_edge_count (struct stinger * S, int64_t nv, int64_t modified_after)
 
 void print_graph_stats(stinger_t *S, int64_t nv, int64_t modified_after)
 {
-    struct stinger_fragmentation_t * stats = xmalloc(sizeof(struct stinger_fragmentation_t));
+    struct stinger_fragmentation_t * stats = (stinger_fragmentation_t*)xmalloc(sizeof(struct stinger_fragmentation_t));
     stinger_fragmentation (S, nv, stats);
     printf("{\n");
     printf("\"num_vertices\"            :%ld,\n", nv);
@@ -75,12 +78,12 @@ void print_graph_stats(stinger_t *S, int64_t nv, int64_t modified_after)
 }
 
 void
-insert_batch(stinger_t * S, const struct dynograph_edge_batch batch)
+insert_batch(stinger_t * S, const struct dynograph_edge_batch batch, int64_t trial)
 {
     const int64_t type = 0;
     const int64_t num_edges = batch.num_edges;
     const int64_t directed = batch.directed;
-    hooks_region_begin();
+    hooks_region_begin(trial);
     OMP("omp parallel for")
     for (int64_t i = 0; i < num_edges; ++i)
     {
@@ -92,7 +95,7 @@ insert_batch(stinger_t * S, const struct dynograph_edge_batch batch)
             stinger_insert_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
         }
     }
-    hooks_region_end();
+    hooks_region_end(trial);
 }
 
 struct benchmark
@@ -130,7 +133,7 @@ get_benchmark(const char *name)
     return b;
 }
 
-void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, void *alg_data, int64_t modified_after)
+void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, void *alg_data, int64_t modified_after, int64_t trial)
 {
     dynograph_message("Running %s...", alg_name);
     int64_t max_nv = stinger_max_nv(S);
@@ -139,7 +142,7 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
     {
         for (int i = 1; i < sizeof(benchmarks) / sizeof(benchmarks[0]); ++i)
         {
-            run_benchmark(benchmarks[i].name, S, num_vertices, alg_data, modified_after);
+            run_benchmark(benchmarks[i].name, S, num_vertices, alg_data, modified_after, trial);
         }
     }
     else if (!strcmp(alg_name, "bfs"))
@@ -150,9 +153,9 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
         int64_t * level = (int64_t*)alg_data + 3 * max_nv;
         int64_t levels;
         int64_t source_vertex = 3; // FIXME Get this from the command line
-        hooks_region_begin();
+        hooks_region_begin(trial);
         levels = parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
-        hooks_region_end();
+        hooks_region_end(trial);
         if (levels < 5)
         {
             dynograph_message("WARNING: Breadth-first search was only %ld levels. Consider choosing a different source vertex.", levels);
@@ -166,9 +169,9 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
         int64_t * level = (int64_t*)alg_data + 3 * max_nv;
         int64_t levels;
         int64_t source_vertex = 3; // FIXME Get this from the command line
-        hooks_region_begin();
+        hooks_region_begin(trial);
         levels = direction_optimizing_parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
-        hooks_region_end();
+        hooks_region_end(trial);
         if (levels < 5)
         {
             dynograph_message("WARNING: Breadth-first search was only %ld levels. Consider choosing a different source vertex.", levels);
@@ -179,40 +182,40 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
         double *bc =            (double*) alg_data + 0 * max_nv;
         int64_t *found_count =  (int64_t*)alg_data + 1 * max_nv;
         int64_t num_samples = 256; // FIXME Allow override from command line
-        hooks_region_begin();
+        hooks_region_begin(trial);
         sample_search(S, num_vertices, num_samples, bc, found_count, modified_after);
-        hooks_region_end();
+        hooks_region_end(trial);
     }
     else if (!strcmp(alg_name, "clustering"))
     {
         int64_t *num_triangles = (int64_t*) alg_data + 0 * max_nv;
-        hooks_region_begin();
+        hooks_region_begin(trial);
         count_all_triangles(S, num_triangles, modified_after);
-        hooks_region_end();
+        hooks_region_end(trial);
     }
     else if (!strcmp(alg_name, "components"))
     {
         int64_t *component_map = (int64_t*) alg_data + 0 * max_nv;
-        hooks_region_begin();
+        hooks_region_begin(trial);
         parallel_shiloach_vishkin_components(S, num_vertices, component_map, modified_after);
-        hooks_region_end();
+        hooks_region_end(trial);
     }
     else if (!strcmp(alg_name, "kcore"))
     {
         int64_t *labels = (int64_t*) alg_data + 0 * max_nv;
         int64_t *counts = (int64_t*) alg_data + 1 * max_nv;
         int64_t k = 0;
-        hooks_region_begin();
+        hooks_region_begin(trial);
         kcore_find(S, labels, counts, num_vertices, &k, modified_after);
-        hooks_region_end();
+        hooks_region_end(trial);
     }
     else if (!strcmp(alg_name, "pagerank"))
     {
         double * pagerank_scores =      (double*)alg_data + 0 * max_nv;
         double * pagerank_scores_tmp =  (double*)alg_data + 1 * max_nv;
-        hooks_region_begin();
+        hooks_region_begin(trial);
         page_rank_directed(S, num_vertices, pagerank_scores, pagerank_scores_tmp, 1e-8, 0.85, 100, modified_after);
-        hooks_region_end();
+        hooks_region_end(trial);
     }
     else
     {
@@ -242,10 +245,10 @@ int main(int argc, char **argv)
         {
             struct dynograph_edge_batch batch = dynograph_get_batch(dataset, i);
             dynograph_message("Inserting batch %i (%ld edges)", i, batch.num_edges);
-            insert_batch(S, batch);
+            insert_batch(S, batch, trial);
             int64_t modified_after = dynograph_get_timestamp_for_window(dataset, i, args.window_size);
             num_vertices = stinger_max_active_vertex(S) + 1; // TODO faster way to get this?
-            run_benchmark(b->name, S, num_vertices, alg_data, modified_after);
+            run_benchmark(b->name, S, num_vertices, alg_data, modified_after, trial);
             print_graph_stats(S, num_vertices, modified_after);
         }
         // Clean up
