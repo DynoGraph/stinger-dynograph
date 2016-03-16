@@ -69,7 +69,7 @@ void print_graph_stats(stinger_t *S, int64_t nv, int64_t modified_after)
     printf("\"num_empty_edges\"         :%ld,\n", stats->num_empty_edges);
     printf("\"num_fragmented_blocks\"   :%ld,\n", stats->num_fragmented_blocks);
     printf("\"edge_blocks_in_use\"      :%ld,\n", stats->edge_blocks_in_use);
-    printf("\"num_empty_blocks          :%ld\n" , stats->num_empty_blocks);
+    printf("\"num_empty_blocks\"        :%ld\n" , stats->num_empty_blocks);
     printf("}\n");
     free(stats);
 }
