@@ -56,12 +56,14 @@ page_rank_subset(stinger_t * S, int64_t NV, uint8_t * vertex_set, int64_t vertex
     }
 
     STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S) {
-      if (vertex_set[STINGER_EDGE_DEST] && vertex_set[STINGER_EDGE_SOURCE]) {
-        int64_t outdegree = vtx_outdegree[STINGER_EDGE_SOURCE];
-        int64_t count = readfe(&pr_lock[STINGER_EDGE_DEST]);
-        tmp_pr[STINGER_EDGE_DEST] += (((double)pr[STINGER_EDGE_SOURCE]) /
-          ((double) outdegree));
-        writeef(&pr_lock[STINGER_EDGE_DEST],count+1);
+      if (STINGER_IS_OUT_EDGE) {
+        if (vertex_set[STINGER_EDGE_DEST] && vertex_set[STINGER_EDGE_SOURCE]) {
+          int64_t outdegree = vtx_outdegree[STINGER_EDGE_SOURCE];
+          int64_t count = readfe(&pr_lock[STINGER_EDGE_DEST]);
+          tmp_pr[STINGER_EDGE_DEST] += (((double)pr[STINGER_EDGE_SOURCE]) /
+            ((double) outdegree));
+          writeef(&pr_lock[STINGER_EDGE_DEST],count+1);
+        }
       }
     } STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_END();
 

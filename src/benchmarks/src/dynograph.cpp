@@ -61,6 +61,22 @@ filtered_edge_count (struct stinger * S, int64_t nv, int64_t modified_after)
     return num_edges;
 }
 
+// Deletes edges that haven't been modified recently
+void
+delete_old_edges(struct stinger * S, int64_t threshold, int64_t trial)
+{
+    hooks_region_begin(trial);
+    STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S)
+    {
+        if (STINGER_EDGE_TIME_RECENT < threshold) {
+            update_edge_data_and_direction (S, current_eb__, i__, ~STINGER_EDGE_DEST, NULL, NULL, STINGER_EDGE_DIRECTION, EDGE_WEIGHT_SET);
+        }
+    }
+    STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_END();
+    hooks_region_end(trial);
+}
+
+
 void print_graph_stats(stinger_t *S, int64_t nv, int64_t modified_after)
 {
     struct stinger_fragmentation_t * stats = (stinger_fragmentation_t*)xmalloc(sizeof(struct stinger_fragmentation_t));
@@ -244,9 +260,12 @@ int main(int argc, char **argv)
         for (int64_t i = 0; i < dataset->num_batches; ++i)
         {
             struct dynograph_edge_batch batch = dynograph_get_batch(dataset, i);
+            int64_t modified_after = dynograph_get_timestamp_for_window(dataset, i, args.window_size);
+            dynograph_message("Deleting edges older than %ld", modified_after);
+            delete_old_edges(S, modified_after, trial);
             dynograph_message("Inserting batch %i (%ld edges)", i, batch.num_edges);
             insert_batch(S, batch, trial);
-            int64_t modified_after = dynograph_get_timestamp_for_window(dataset, i, args.window_size);
+
             num_vertices = stinger_max_active_vertex(S) + 1; // TODO faster way to get this?
             run_benchmark(b->name, S, num_vertices, alg_data, modified_after, trial);
             print_graph_stats(S, num_vertices, modified_after);
