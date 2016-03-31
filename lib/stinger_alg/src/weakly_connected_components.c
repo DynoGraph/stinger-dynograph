@@ -31,6 +31,7 @@ parallel_shiloach_vishkin_components_of_type (struct stinger * S,  int64_t * com
     /* For all edges in the STINGER graph of type in parallel, attempt to assign
        lesser component IDs to neighbors with greater component IDs */
     STINGER_PARALLEL_FORALL_EDGES_BEGIN (S, type) {
+      if (STINGER_IS_OUT_EDGE) { // HACK had to change FORALL_EDGES to include in-edges too
       int64_t c_src  = component_map[STINGER_EDGE_SOURCE];
       int64_t c_dest = component_map[STINGER_EDGE_DEST];
       /* handles both edge directions */
@@ -41,6 +42,7 @@ parallel_shiloach_vishkin_components_of_type (struct stinger * S,  int64_t * com
       if (c_src < c_dest) {
         component_map[STINGER_EDGE_DEST] = c_src;
         changed++;
+      }
       }
     } STINGER_PARALLEL_FORALL_EDGES_END ();
 

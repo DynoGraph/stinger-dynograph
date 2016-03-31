@@ -245,11 +245,10 @@ extern "C" {
         int64_t type__ = current_eb__->etype;                                                 \
         for(uint64_t i__ = 0; i__ < stinger_eb_high(current_eb__); i__++) {                   \
           if(!stinger_eb_is_blank(current_eb__, i__)) {                                       \
-            struct stinger_edge * current_edge__ = current_eb__->edges + i__;                 \
-            if (STINGER_IS_OUT_EDGE) {
+            struct stinger_edge * current_edge__ = current_eb__->edges + i__;
+            //if (STINGER_IS_OUT_EDGE) { // HACK I need to use this macro for deletions
 
 #define STINGER_GENERIC_FORALL_EDGES_END()  \
-            } /* end if is out edge */      \
           } /* end if eb is blank */        \
         } /* end for edges in eb */         \
       } /* for each edge of type t__ */     \
