@@ -143,7 +143,7 @@ int64_t
 dynograph_get_timestamp_for_window(const struct dynograph_dataset *dataset, int64_t batch_id, int64_t window_size)
 {
     int64_t modified_after = INT64_MIN;
-    if (batch_id >= window_size)
+    if (batch_id > window_size)
     {
         // Intentionally rounding down here
         // TODO variable number of edges per batch
