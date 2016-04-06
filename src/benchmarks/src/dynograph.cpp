@@ -14,6 +14,9 @@ extern "C" {
 #include <pagerank.h>
 }
 
+#include <vector>
+std::vector<int64_t> bfs_sources = {3, 30, 300, 4, 40, 400};
+
 struct args
 {
     const char* alg_name;
@@ -152,9 +155,11 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
         int64_t * Qhead = (int64_t*)alg_data + 2 * max_nv;
         int64_t * level = (int64_t*)alg_data + 3 * max_nv;
         int64_t levels;
-        int64_t source_vertex = 3; // FIXME Get this from the command line
         hooks_region_begin(trial);
-        levels = parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
+        for (int64_t source_vertex : bfs_sources)
+        {
+            levels = parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
+        }
         hooks_region_end(trial);
         if (levels < 5)
         {
@@ -170,7 +175,10 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
         int64_t levels;
         int64_t source_vertex = 3; // FIXME Get this from the command line
         hooks_region_begin(trial);
-        levels = direction_optimizing_parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
+        for (int64_t source_vertex : bfs_sources)
+        {
+            levels = direction_optimizing_parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
+        }
         hooks_region_end(trial);
         if (levels < 5)
         {
