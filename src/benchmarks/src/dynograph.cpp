@@ -21,6 +21,7 @@ struct args
     int64_t window_size;
     int64_t num_batches;
     int64_t num_trials;
+    int64_t enable_deletions;
 };
 
 struct args
@@ -37,6 +38,11 @@ get_args(int argc, char **argv)
     args.num_batches = atoll(argv[3]);
     args.window_size = atoll(argv[4]);
     args.num_trials = atoll(argv[5]);
+    if (args.window_size < 0)
+    {
+        args.enable_deletions = 1;
+        args.window_size = -args.window_size;
+    } else { args.enable_deletions = 0; }
     if (args.num_batches < 1 || args.window_size < 1 || args.num_trials < 1)
     {
         dynograph_error("num_batches, window_size, and num_trials must be positive");
@@ -261,12 +267,16 @@ int main(int argc, char **argv)
         {
             struct dynograph_edge_batch batch = dynograph_get_batch(dataset, i);
             int64_t modified_after = dynograph_get_timestamp_for_window(dataset, i, args.window_size);
-            dynograph_message("Deleting edges older than %ld", modified_after);
-            delete_old_edges(S, modified_after, trial);
+            if (args.enable_deletions)
+            {
+                dynograph_message("Deleting edges older than %ld", modified_after);
+                delete_old_edges(S, modified_after, trial);
+            }
             dynograph_message("Inserting batch %i (%ld edges)", i, batch.num_edges);
             insert_batch(S, batch, trial);
-
             num_vertices = stinger_max_active_vertex(S) + 1; // TODO faster way to get this?
+ 
+            dynograph_message("Filtering on >= %ld", modified_after);
             run_benchmark(b->name, S, num_vertices, alg_data, modified_after, trial);
             print_graph_stats(S, num_vertices, modified_after);
         }
