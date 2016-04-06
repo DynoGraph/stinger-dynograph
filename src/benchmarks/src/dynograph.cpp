@@ -283,7 +283,6 @@ int main(int argc, char **argv)
             dynograph_message("Inserting batch %i (%ld edges)", i, batch.num_edges);
             insert_batch(S, batch, trial);
             num_vertices = stinger_max_active_vertex(S) + 1; // TODO faster way to get this?
-
             dynograph_message("Filtering on >= %ld", modified_after);
             run_benchmark(b->name, S, num_vertices, alg_data, modified_after, trial);
             print_graph_stats(S, num_vertices, modified_after);
