@@ -115,9 +115,9 @@ insert_batch(stinger_t * S, const struct dynograph_edge_batch batch, int64_t tri
         const struct dynograph_edge* e = &batch.edges[i];
         if (directed)
         {
-            stinger_insert_edge     (S, type, e->src, e->dst, e->weight, e->timestamp);
+            stinger_incr_edge     (S, type, e->src, e->dst, e->weight, e->timestamp);
         } else { // undirected
-            stinger_insert_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
+            stinger_incr_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
         }
     }
     hooks_region_end(trial);
