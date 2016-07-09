@@ -1,0 +1,3 @@
+[submodule "lib/dynograph_util"]
+	path = lib/dynograph_util
+	url = git@github.gatech.edu:ehein6/dynograph_util.git

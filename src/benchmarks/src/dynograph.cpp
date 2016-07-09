@@ -2,9 +2,9 @@
 
 #include <hooks.h>
 
-extern "C" {
-#include <dynograph_util.h>
+#include <dynograph_util.hh>
 
+extern "C" {
 #include <stinger.h>
 #include <bfs.h>
 #include <betweenness.h>
@@ -15,6 +15,9 @@ extern "C" {
 }
 
 #include <vector>
+#include <iostream>
+using std::cerr;
+
 std::vector<int64_t> bfs_sources = {3, 30, 300, 4, 40, 400};
 
 struct args
@@ -33,7 +36,8 @@ get_args(int argc, char **argv)
     struct args args;
     if (argc != 6)
     {
-        dynograph_error("Usage: alg_name input_path num_batches window_size num_trials \n");
+        cerr << "Usage: alg_name input_path num_batches window_size num_trials \n";
+        exit(-1);
     }
 
     args.alg_name = argv[1];
@@ -48,7 +52,8 @@ get_args(int argc, char **argv)
     } else { args.enable_deletions = 0; }
     if (args.num_batches < 1 || args.window_size < 1 || args.num_trials < 1)
     {
-        dynograph_error("num_batches, window_size, and num_trials must be positive");
+        cerr << "num_batches, window_size, and num_trials must be positive\n";
+        exit(-1);
     }
 
     return args;
@@ -103,16 +108,14 @@ void print_graph_stats(stinger_t *S, int64_t nv, int64_t modified_after)
 }
 
 void
-insert_batch(stinger_t * S, const struct dynograph_edge_batch batch, int64_t trial)
+insert_batch(stinger_t * S, DynoGraph::Batch batch, int64_t trial)
 {
     const int64_t type = 0;
-    const int64_t num_edges = batch.num_edges;
-    const int64_t directed = batch.directed;
+    const int64_t directed = true; // FIXME
     hooks_region_begin(trial);
     OMP("omp parallel for")
-    for (int64_t i = 0; i < num_edges; ++i)
+    for (auto e = batch.begin(); e < batch.end(); ++e)
     {
-        const struct dynograph_edge* e = &batch.edges[i];
         if (directed)
         {
             stinger_incr_edge     (S, type, e->src, e->dst, e->weight, e->timestamp);
@@ -153,14 +156,15 @@ get_benchmark(const char *name)
     }
     if (b == NULL)
     {
-        dynograph_error("Benchmark '%s' does not exist!", name);
+        cerr << "Benchmark '" << name << "' does not exist!\n";
+        exit(-1);
     }
     return b;
 }
 
 void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, void *alg_data, int64_t modified_after, int64_t trial)
 {
-    dynograph_message("Running %s...", alg_name);
+    cerr << "Running " << alg_name << "...\n";
     int64_t max_nv = stinger_max_nv(S);
 
     if (!strcmp(alg_name, "all"))
@@ -185,7 +189,7 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
         hooks_region_end(trial);
         if (levels < 5)
         {
-            dynograph_message("WARNING: Breadth-first search was only %ld levels. Consider choosing a different source vertex.", levels);
+            cerr << "WARNING: Breadth-first search was only " << levels << " levels. Consider choosing a different source vertex.\n";
         }
     }
     else if (!strcmp(alg_name, "bfs-do"))
@@ -204,7 +208,7 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
         hooks_region_end(trial);
         if (levels < 5)
         {
-            dynograph_message("WARNING: Breadth-first search was only %ld levels. Consider choosing a different source vertex.", levels);
+            cerr << "WARNING: Breadth-first search was only " << levels << " levels. Consider choosing a different source vertex.\n";
         }
     }
     else if (!strcmp(alg_name, "betweenness"))
@@ -249,7 +253,8 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
     }
     else
     {
-        dynograph_error("Algorithm %s not implemented!", alg_name);
+        cerr << "Algorithm " << alg_name << " not implemented!\n";
+        exit(-1);
     }
 }
 
@@ -258,7 +263,7 @@ int main(int argc, char **argv)
     // Process command line arguments
     struct args args = get_args(argc, argv);
     // Load graph data in from the file in batches
-    struct dynograph_dataset* dataset = dynograph_load_dataset(args.input_path, args.num_batches);
+    DynoGraph::Dataset dataset(args.input_path, args.num_batches);
     // Look up the algorithm that will be benchmarked
     struct benchmark *b = get_benchmark(args.alg_name);
 
@@ -271,19 +276,19 @@ int main(int argc, char **argv)
         void *alg_data = xcalloc(sizeof(int64_t) * b->data_per_vertex, num_vertices);
 
         // Run the algorithm(s) after each inserted batch
-        for (int64_t i = 0; i < dataset->num_batches; ++i)
+        for (int64_t i = 0; i < dataset.getNumBatches(); ++i)
         {
-            struct dynograph_edge_batch batch = dynograph_get_batch(dataset, i);
-            int64_t modified_after = dynograph_get_timestamp_for_window(dataset, i, args.window_size);
+            DynoGraph::Batch batch = dataset.getBatch(i);
+            int64_t modified_after = dataset.getTimestampForWindow(i, args.window_size);
             if (args.enable_deletions)
             {
-                dynograph_message("Deleting edges older than %ld", modified_after);
+                cerr << "Deleting edges older than " << modified_after << "\n";
                 delete_old_edges(S, modified_after, trial);
             }
-            dynograph_message("Inserting batch %i (%ld edges)", i, batch.num_edges);
+            cerr << "Inserting batch " << i << "\n";
             insert_batch(S, batch, trial);
             num_vertices = stinger_max_active_vertex(S) + 1; // TODO faster way to get this?
-            dynograph_message("Filtering on >= %ld", modified_after);
+            cerr << "Filtering on >= " << modified_after << "\n";
             run_benchmark(b->name, S, num_vertices, alg_data, modified_after, trial);
             print_graph_stats(S, num_vertices, modified_after);
         }
@@ -291,8 +296,6 @@ int main(int argc, char **argv)
         free(alg_data);
         stinger_free(S);
     }
-
-    dynograph_free_dataset(dataset);
 
     return 0;
 }
