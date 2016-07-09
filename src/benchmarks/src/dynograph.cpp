@@ -79,7 +79,7 @@ filtered_edge_count (struct stinger * S, int64_t nv, int64_t modified_after)
 void
 delete_old_edges(struct stinger * S, int64_t threshold, int64_t trial)
 {
-    hooks_region_begin(trial);
+    Hooks::getInstance().region_begin("deletions", trial);
     STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S)
     {
         if (STINGER_EDGE_TIME_RECENT < threshold) {
@@ -87,7 +87,7 @@ delete_old_edges(struct stinger * S, int64_t threshold, int64_t trial)
         }
     }
     STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_END();
-    hooks_region_end(trial);
+    Hooks::getInstance().region_end("deletions", trial);
 }
 
 
@@ -112,7 +112,7 @@ insert_batch(stinger_t * S, DynoGraph::Batch batch, int64_t trial)
 {
     const int64_t type = 0;
     const int64_t directed = true; // FIXME
-    hooks_region_begin(trial);
+    Hooks::getInstance().region_begin("insertions", trial);
     OMP("omp parallel for")
     for (auto e = batch.begin(); e < batch.end(); ++e)
     {
@@ -123,7 +123,7 @@ insert_batch(stinger_t * S, DynoGraph::Batch batch, int64_t trial)
             stinger_incr_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
         }
     }
-    hooks_region_end(trial);
+    Hooks::getInstance().region_end("insertions", trial);
 }
 
 struct benchmark
@@ -181,12 +181,12 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
         int64_t * Qhead = (int64_t*)alg_data + 2 * max_nv;
         int64_t * level = (int64_t*)alg_data + 3 * max_nv;
         int64_t levels;
-        hooks_region_begin(trial);
+        Hooks::getInstance().region_begin("bfs", trial);
         for (int64_t source_vertex : bfs_sources)
         {
             levels = parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
         }
-        hooks_region_end(trial);
+        Hooks::getInstance().region_end("bfs", trial);
         if (levels < 5)
         {
             cerr << "WARNING: Breadth-first search was only " << levels << " levels. Consider choosing a different source vertex.\n";
@@ -200,12 +200,12 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
         int64_t * level = (int64_t*)alg_data + 3 * max_nv;
         int64_t levels;
         int64_t source_vertex = 3; // FIXME Get this from the command line
-        hooks_region_begin(trial);
+        Hooks::getInstance().region_begin("bfs-do", trial);
         for (int64_t source_vertex : bfs_sources)
         {
             levels = direction_optimizing_parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
         }
-        hooks_region_end(trial);
+        Hooks::getInstance().region_end("bfs-do", trial);
         if (levels < 5)
         {
             cerr << "WARNING: Breadth-first search was only " << levels << " levels. Consider choosing a different source vertex.\n";
@@ -216,40 +216,40 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
         double *bc =            (double*) alg_data + 0 * max_nv;
         int64_t *found_count =  (int64_t*)alg_data + 1 * max_nv;
         int64_t num_samples = 256; // FIXME Allow override from command line
-        hooks_region_begin(trial);
+        Hooks::getInstance().region_begin("betweenness", trial);
         sample_search(S, num_vertices, num_samples, bc, found_count, modified_after);
-        hooks_region_end(trial);
+        Hooks::getInstance().region_end("betweenness", trial);
     }
     else if (!strcmp(alg_name, "clustering"))
     {
         int64_t *num_triangles = (int64_t*) alg_data + 0 * max_nv;
-        hooks_region_begin(trial);
+        Hooks::getInstance().region_begin("clustering", trial);
         count_all_triangles(S, num_triangles, modified_after);
-        hooks_region_end(trial);
+        Hooks::getInstance().region_end("clustering", trial);
     }
     else if (!strcmp(alg_name, "components"))
     {
         int64_t *component_map = (int64_t*) alg_data + 0 * max_nv;
-        hooks_region_begin(trial);
+        Hooks::getInstance().region_begin("clustering", trial);
         parallel_shiloach_vishkin_components(S, num_vertices, component_map, modified_after);
-        hooks_region_end(trial);
+        Hooks::getInstance().region_end("clustering", trial);
     }
     else if (!strcmp(alg_name, "kcore"))
     {
         int64_t *labels = (int64_t*) alg_data + 0 * max_nv;
         int64_t *counts = (int64_t*) alg_data + 1 * max_nv;
         int64_t k = 0;
-        hooks_region_begin(trial);
+        Hooks::getInstance().region_begin("kcore", trial);
         kcore_find(S, labels, counts, num_vertices, &k, modified_after);
-        hooks_region_end(trial);
+        Hooks::getInstance().region_end("kcore", trial);
     }
     else if (!strcmp(alg_name, "pagerank"))
     {
         double * pagerank_scores =      (double*)alg_data + 0 * max_nv;
         double * pagerank_scores_tmp =  (double*)alg_data + 1 * max_nv;
-        hooks_region_begin(trial);
+        Hooks::getInstance().region_begin("pagerank", trial);
         page_rank_directed(S, num_vertices, pagerank_scores, pagerank_scores_tmp, 1e-8, 0.85, 100, modified_after);
-        hooks_region_end(trial);
+        Hooks::getInstance().region_end("pagerank", trial);
     }
     else
     {

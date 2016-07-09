@@ -1,8 +1,3 @@
-set(headers
-  inc/hooks.h
-  inc/perf.h
-  inc/pfm_cxx.h
-)
 
 file(COPY ${headers} DESTINATION "${CMAKE_BINARY_DIR}/include/dynograph")
 
@@ -10,9 +5,7 @@ include_directories("${CMAKE_BINARY_DIR}/include/stinger_alg")
 include_directories("${CMAKE_BINARY_DIR}/include/stinger_core")
 include_directories("${CMAKE_BINARY_DIR}/include/dynograph")
 include_directories("${CMAKE_SOURCE_DIR}/lib/dynograph_util")
-if (HOOKS_TYPE STREQUAL "PERF")
-	add_library(pfm_cxx STATIC src/pfm_cxx.cpp inc/pfm_cxx.h)
-endif()
+include_directories("${CMAKE_SOURCE_DIR}/lib/hooks")
 
-add_executable(dynograph src/dynograph.cpp src/hooks.cpp)
-target_link_libraries(dynograph stinger_core stinger_alg dynograph_util ${BENCHMARK_LIBS})
+add_executable(dynograph src/dynograph.cpp)
+target_link_libraries(dynograph stinger_core stinger_alg dynograph_util hooks)

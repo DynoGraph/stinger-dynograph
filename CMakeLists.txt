@@ -2,52 +2,6 @@ cmake_minimum_required (VERSION 2.8.11)
 project (DYNOGRAPH)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-
-set(HOOKS_TYPE "" CACHE STRING "Add flags and/or ROI hooks for running under a simulator. Values are 'NONE', 'GEM5', 'SNIPER', 'PIN', 'PAPI' ")
-
-if (HOOKS_TYPE STREQUAL "")
-	# No hooks
-elseif (HOOKS_TYPE STREQUAL "SNIPER")
-	add_definitions(-DENABLE_SNIPER_HOOKS)
-	set(SNIPER_ROOT $ENV{SNIPER_ROOT})
-	set(GRAPHITE_ROOT $ENV{SNIPER_ROOT})
-	include($ENV{SNIPER_ROOT}/config/buildconf.cmake)
-	set(BENCHMARKS_ROOT $ENV{BENCHMARKS_ROOT})
-	include($ENV{BENCHMARKS_ROOT}/tools/hooks/buildconf.cmake)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SNIPER_CFLAGS} ${HOOKS_CFLAGS}")
-	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SNIPER_LDFLAGS} ${HOOKS_LDFLAGS}")
-
-elseif (HOOKS_TYPE STREQUAL "GEM5")
-	add_definitions(-DENABLE_GEM5_HOOKS)
-	set(GEM5_HOME $ENV{GEM5_HOME})
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -I${GEM5_HOME}")
-	if (CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
-		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${GEM5_HOME}/util/m5/m5op_arm_A64.S")
-	else()
-		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${GEM5_HOME}/util/m5/m5op_${CMAKE_SYSTEM_PROCESSOR}.S")
-	endif()
-
-elseif (HOOKS_TYPE STREQUAL "PIN")
-	add_definitions(-DENABLE_PIN_HOOKS)
-
-elseif (HOOKS_TYPE STREQUAL "PERF")
-	add_definitions(-DENABLE_PERF_HOOKS)
-	find_package( PERFMON REQUIRED )
-	include_directories(${PERFMON_INCLUDE_DIRS})
-	set(BENCHMARK_LIBS "pfm_cxx;${PERFMON_LIBRARIES}")
-
-elseif (HOOKS_TYPE STREQUAL "PAPI")
-	add_definitions(-DENABLE_PAPI_HOOKS)
-	find_package( PAPI REQUIRED )
-	include_directories(${PAPI_INCLUDE_DIRS})
-	find_package( PERFMON REQUIRED )
-	include_directories(${PERFMON_INCLUDE_DIRS})
-	set(BENCHMARK_LIBS "${PAPI_LIBRARIES};${PERFMON_LIBRARIES}")
-
-else ()
-	message(FATAL_ERROR "Invalid value for HOOKS_TYPE : ${HOOKS_TYPE}")
-endif()
-
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
@@ -77,7 +31,6 @@ set(STINGER_NAME_STR_MAX "255" CACHE STRING "Max string length in physmap")
 
 configure_file(${CMAKE_SOURCE_DIR}/lib/stinger_core/inc/stinger_defs.h.in ${CMAKE_BINARY_DIR}/include/stinger_core/stinger_defs.h @ONLY)
 configure_file(${CMAKE_SOURCE_DIR}/lib/stinger_core/inc/stinger_names.h.in ${CMAKE_BINARY_DIR}/include/stinger_core/stinger_names.h @ONLY)
-
 
 # Begin building subdirectories
 add_subdirectory(lib)
