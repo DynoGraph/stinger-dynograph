@@ -83,7 +83,7 @@ delete_old_edges(struct stinger * S, int64_t threshold, int64_t trial)
     STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S)
     {
         if (STINGER_EDGE_TIME_RECENT < threshold) {
-            update_edge_data_and_direction (S, current_eb__, i__, ~STINGER_EDGE_DEST, NULL, NULL, STINGER_EDGE_DIRECTION, EDGE_WEIGHT_SET);
+            update_edge_data_and_direction (S, current_eb__, i__, ~STINGER_EDGE_DEST, 0, 0, STINGER_EDGE_DIRECTION, EDGE_WEIGHT_SET);
         }
     }
     STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_END();
