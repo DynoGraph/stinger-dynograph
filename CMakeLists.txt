@@ -2,11 +2,6 @@ cmake_minimum_required (VERSION 2.8.11)
 project (DYNOGRAPH)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
-
-link_libraries(m)
-
 # Build with OpenMP
 find_package( OpenMP )
 if(OPENMP_FOUND)
