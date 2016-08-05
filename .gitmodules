@@ -4,3 +4,6 @@
 [submodule "lib/hooks"]
 	path = lib/hooks
 	url = git@github.gatech.edu:ehein6/hooks.git
+[submodule "lib/stinger"]
+	path = lib/stinger
+	url = git@github.com:stingergraph/stinger.git

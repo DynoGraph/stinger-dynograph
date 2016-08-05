@@ -1,4 +1,3 @@
-add_subdirectory(stinger_alg)
-add_subdirectory(stinger_core)
-add_subdirectory(dynograph_util)
 add_subdirectory(hooks)
+add_subdirectory(dynograph_util)
+add_subdirectory(stinger)

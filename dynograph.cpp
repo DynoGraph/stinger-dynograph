@@ -5,13 +5,13 @@
 #include <dynograph_util.hh>
 
 extern "C" {
-#include <stinger.h>
-#include <bfs.h>
-#include <betweenness.h>
-#include <clustering.h>
-#include <static_components.h>
-#include <kcore.h>
-#include <pagerank.h>
+#include <stinger_core/stinger.h>
+#include <stinger_alg/bfs.h>
+#include <stinger_alg/betweenness.h>
+#include <stinger_alg/clustering.h>
+#include <stinger_alg/static_components.h>
+#include <stinger_alg/kcore.h>
+#include <stinger_alg/pagerank.h>
 }
 
 #include <vector>
@@ -91,13 +91,13 @@ delete_old_edges(struct stinger * S, int64_t threshold, int64_t trial)
 }
 
 
-void print_graph_stats(stinger_t *S, int64_t nv, int64_t modified_after)
+void print_graph_stats(stinger_t *S, int64_t nv)
 {
     struct stinger_fragmentation_t * stats = (stinger_fragmentation_t*)xmalloc(sizeof(struct stinger_fragmentation_t));
     stinger_fragmentation (S, nv, stats);
     printf("{\n");
     printf("\"num_vertices\"            :%ld,\n", nv);
-    printf("\"num_filtered_edges\"      :%ld,\n", filtered_edge_count(S, nv, modified_after));
+    //printf("\"num_filtered_edges\"      :%ld,\n", filtered_edge_count(S, nv, modified_after));
     printf("\"num_edges\"               :%ld,\n", stats->num_edges);
     printf("\"num_empty_edges\"         :%ld,\n", stats->num_empty_edges);
     printf("\"num_fragmented_blocks\"   :%ld,\n", stats->num_fragmented_blocks);
@@ -174,6 +174,7 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
             run_benchmark(benchmarks[i].name, S, num_vertices, alg_data, modified_after, trial);
         }
     }
+
     else if (!strcmp(alg_name, "bfs"))
     {
         int64_t * marks = (int64_t*)alg_data + 0 * max_nv;
@@ -184,7 +185,7 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
         Hooks::getInstance().region_begin("bfs", trial);
         for (int64_t source_vertex : bfs_sources)
         {
-            levels = parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
+            levels = parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level);
         }
         Hooks::getInstance().region_end("bfs", trial);
         if (levels < 5)
@@ -192,6 +193,7 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
             cerr << "WARNING: Breadth-first search was only " << levels << " levels. Consider choosing a different source vertex.\n";
         }
     }
+
     else if (!strcmp(alg_name, "bfs-do"))
     {
         int64_t * marks = (int64_t*)alg_data + 0 * max_nv;
@@ -203,7 +205,7 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
         Hooks::getInstance().region_begin("bfs-do", trial);
         for (int64_t source_vertex : bfs_sources)
         {
-            levels = direction_optimizing_parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
+            levels = direction_optimizing_parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level);
         }
         Hooks::getInstance().region_end("bfs-do", trial);
         if (levels < 5)
@@ -211,27 +213,28 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
             cerr << "WARNING: Breadth-first search was only " << levels << " levels. Consider choosing a different source vertex.\n";
         }
     }
+
     else if (!strcmp(alg_name, "betweenness"))
     {
         double *bc =            (double*) alg_data + 0 * max_nv;
         int64_t *found_count =  (int64_t*)alg_data + 1 * max_nv;
         int64_t num_samples = 256; // FIXME Allow override from command line
         Hooks::getInstance().region_begin("betweenness", trial);
-        sample_search(S, num_vertices, num_samples, bc, found_count, modified_after);
+        sample_search(S, num_vertices, num_samples, bc, found_count);
         Hooks::getInstance().region_end("betweenness", trial);
     }
     else if (!strcmp(alg_name, "clustering"))
     {
         int64_t *num_triangles = (int64_t*) alg_data + 0 * max_nv;
         Hooks::getInstance().region_begin("clustering", trial);
-        count_all_triangles(S, num_triangles, modified_after);
+        count_all_triangles(S, num_triangles);
         Hooks::getInstance().region_end("clustering", trial);
     }
     else if (!strcmp(alg_name, "components"))
     {
         int64_t *component_map = (int64_t*) alg_data + 0 * max_nv;
         Hooks::getInstance().region_begin("clustering", trial);
-        parallel_shiloach_vishkin_components(S, num_vertices, component_map, modified_after);
+        parallel_shiloach_vishkin_components(S, num_vertices, component_map);
         Hooks::getInstance().region_end("clustering", trial);
     }
     else if (!strcmp(alg_name, "kcore"))
@@ -240,7 +243,7 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
         int64_t *counts = (int64_t*) alg_data + 1 * max_nv;
         int64_t k = 0;
         Hooks::getInstance().region_begin("kcore", trial);
-        kcore_find(S, labels, counts, num_vertices, &k, modified_after);
+        kcore_find(S, labels, counts, num_vertices, &k);
         Hooks::getInstance().region_end("kcore", trial);
     }
     else if (!strcmp(alg_name, "pagerank"))
@@ -248,7 +251,7 @@ void run_benchmark(const char *alg_name, stinger_t * S, int64_t num_vertices, vo
         double * pagerank_scores =      (double*)alg_data + 0 * max_nv;
         double * pagerank_scores_tmp =  (double*)alg_data + 1 * max_nv;
         Hooks::getInstance().region_begin("pagerank", trial);
-        page_rank_directed(S, num_vertices, pagerank_scores, pagerank_scores_tmp, 1e-8, 0.85, 100, modified_after);
+        page_rank_directed(S, num_vertices, pagerank_scores, pagerank_scores_tmp, 1e-8, 0.85, 100);
         Hooks::getInstance().region_end("pagerank", trial);
     }
     else
@@ -290,7 +293,7 @@ int main(int argc, char **argv)
             num_vertices = stinger_max_active_vertex(S) + 1; // TODO faster way to get this?
             cerr << "Filtering on >= " << modified_after << "\n";
             run_benchmark(b->name, S, num_vertices, alg_data, modified_after, trial);
-            print_graph_stats(S, num_vertices, modified_after);
+            print_graph_stats(S, num_vertices);
         }
         // Clean up
         free(alg_data);
