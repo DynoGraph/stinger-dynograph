@@ -304,6 +304,7 @@ int main(int argc, char **argv)
         // Register algorithms to run
         for (string algName : split(args.alg_name, ' '))
         {
+            cerr << "Initializing " << algName << "...\n";
             server.registerAlg(algName);
         }
 
