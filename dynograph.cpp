@@ -97,7 +97,7 @@ shared_ptr<IDynamicGraphAlgorithm> createAlgorithm(string name)
     } else if (name == "simple_communities") {
         return make_shared<SimpleCommunities>();
     } else if (name == "simple_communities_updating") {
-        return make_shared<SimpleCommunitiesUpdating>(true);
+        return make_shared<SimpleCommunitiesUpdating>(false);
     } else if (name == "streaming_cc") {
         return make_shared<StreamingConnectedComponents>();
     } else if (name == "kcore") {
