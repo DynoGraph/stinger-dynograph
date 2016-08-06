@@ -20,11 +20,13 @@ extern "C" {
 #include <memory>
 #include <stinger_alg/streaming_algorithm.h>
 #include <stinger_alg/dynamic_betweenness.h>
+#include <stinger_alg/dynamic_static_components.h>
 #include <stinger_alg/dynamic_clustering.h>
 #include <stinger_alg/dynamic_kcore.h>
 #include <stinger_alg/dynamic_pagerank.h>
 #include <stinger_alg/dynamic_simple_communities.h>
 #include <stinger_alg/dynamic_simple_communities_updating.h>
+#include <stinger_alg/dynamic_streaming_connected_components.h>
 
 using std::cerr;
 using std::shared_ptr;
@@ -82,12 +84,16 @@ shared_ptr<IDynamicGraphAlgorithm> createAlgorithm(std::string name)
 {
     if        (name == "bc") {
         return make_shared<BetweennessCentrality>(256, 0.5, 1);
+    } else if (name == "cc") {
+        return make_shared<ConnectedComponents>();
     } else if (name == "clustering") {
         return make_shared<ClusteringCoefficients>();
     } else if (name == "simple_communities") {
         return make_shared<SimpleCommunities>();
     } else if (name == "simple_communities_updating") {
         return make_shared<SimpleCommunitiesUpdating>(true);
+    } else if (name == "streaming_cc") {
+        return make_shared<StreamingConnectedComponents>();
     } else if (name == "kcore") {
         return make_shared<KCore>();
     } else if (name == "pagerank") {
@@ -96,6 +102,7 @@ shared_ptr<IDynamicGraphAlgorithm> createAlgorithm(std::string name)
         cerr << "Algorithm " << name << " not implemented!\n";
         exit(-1);
     }
+
 }
 
 class DummyServer
