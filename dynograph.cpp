@@ -275,6 +275,21 @@ public:
 
 };
 
+// Helper functions to split strings
+// http://stackoverflow.com/a/236803/1877086
+void split(const string &s, char delim, vector<string> &elems) {
+    stringstream ss(s);
+    string item;
+    while (getline(ss, item, delim)) {
+        elems.push_back(item);
+    }
+}
+vector<string> split(const string &s, char delim) {
+    vector<string> elems;
+    split(s, delim, elems);
+    return elems;
+}
+
 int main(int argc, char **argv)
 {
     // Process command line arguments
@@ -286,8 +301,11 @@ int main(int argc, char **argv)
     {
         // Create the stinger data structure
         DummyServer server;
-        // FIXME handle "all" algs
-        server.registerAlg(args.alg_name);
+        // Register algorithms to run
+        for (string algName : split(args.alg_name, ' '))
+        {
+            server.registerAlg(algName);
+        }
 
         // Run the algorithm(s) after each inserted batch
         for (int64_t i = 0; i < dataset.getNumBatches(); ++i)
