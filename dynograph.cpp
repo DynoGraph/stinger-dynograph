@@ -60,11 +60,12 @@ get_args(int argc, char **argv)
     args.num_batches = atoll(argv[3]);
     args.window_size = atoll(argv[4]);
     args.num_trials = atoll(argv[5]);
-    if (args.window_size < 0)
+    if (args.window_size == args.num_batches)
     {
+        args.enable_deletions = 0;
+    } else {
         args.enable_deletions = 1;
-        args.window_size = -args.window_size;
-    } else { args.enable_deletions = 0; }
+    }
     if (args.num_batches < 1 || args.window_size < 1 || args.num_trials < 1)
     {
         cerr << "num_batches, window_size, and num_trials must be positive\n";
@@ -192,24 +193,33 @@ public:
     void
     deleteOlderThan(int64_t threshold)
     {
+        recentDeletions.clear();
+        // Each thread gets a vector to record deletions
+        std::vector<std::vector<stinger_edge_update>> myDeletions(omp_get_max_threads());
+
         Hooks::getInstance().region_begin("deletions");
         STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S)
         {
-            std::vector<stinger_edge_update> myDeletions;
             if (STINGER_EDGE_TIME_RECENT < threshold) {
-                // Create a record of the deletion
+                // Record the deletion
                 stinger_edge_update u;
                 u.source = STINGER_EDGE_SOURCE;
                 u.destination = STINGER_EDGE_DEST;
                 u.weight = STINGER_EDGE_WEIGHT;
                 u.time = STINGER_EDGE_TIME_RECENT;
-                myDeletions.push_back(u);
+                myDeletions[omp_get_thread_num()].push_back(u);
                 // Delete the edge
                 update_edge_data_and_direction (S, current_eb__, i__, ~STINGER_EDGE_DEST, 0, 0, STINGER_EDGE_DIRECTION, EDGE_WEIGHT_SET);
             }
         }
         STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_END();
+
         Hooks::getInstance().region_end("deletions");
+        // Combine each thread's deletions into a single array
+        for (int i = 0; i < omp_get_max_threads(); ++i)
+        {
+            recentDeletions.insert(recentDeletions.end(), myDeletions[i].begin(), myDeletions[i].end());
+        }
     }
 
 
