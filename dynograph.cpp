@@ -1,7 +1,12 @@
+#include <vector>
+#include <map>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <sstream>
 #include <stdint.h>
 
 #include <hooks.h>
-
 #include <dynograph_util.hh>
 
 extern "C" {
@@ -13,11 +18,6 @@ extern "C" {
 #include <stinger_alg/kcore.h>
 #include <stinger_alg/pagerank.h>
 }
-
-#include <vector>
-#include <map>
-#include <iostream>
-#include <memory>
 #include <stinger_alg/streaming_algorithm.h>
 #include <stinger_alg/dynamic_betweenness.h>
 #include <stinger_alg/dynamic_static_components.h>
@@ -31,9 +31,14 @@ extern "C" {
 using std::cerr;
 using std::shared_ptr;
 using std::make_shared;
+using std::string;
+using std::stringstream;
+using std::vector;
+using std::map;
+
 using namespace gt::stinger;
 
-std::vector<int64_t> bfs_sources = {3, 30, 300, 4, 40, 400};
+vector<int64_t> bfs_sources = {3, 30, 300, 4, 40, 400};
 
 struct args
 {
@@ -81,7 +86,7 @@ struct Algorithm
     shared_ptr<IDynamicGraphAlgorithm> impl;
 };
 
-shared_ptr<IDynamicGraphAlgorithm> createAlgorithm(std::string name)
+shared_ptr<IDynamicGraphAlgorithm> createAlgorithm(string name)
 {
     if        (name == "bc") {
         return make_shared<BetweennessCentrality>(256, 0.5, 1);
@@ -110,9 +115,9 @@ class DummyServer
 {
 private:
     stinger_t * S;
-    std::map<std::string, Algorithm> registry;
-    std::vector<stinger_edge_update> recentInsertions;
-    std::vector<stinger_edge_update> recentDeletions;
+    map<string, Algorithm> registry;
+    vector<stinger_edge_update> recentInsertions;
+    vector<stinger_edge_update> recentDeletions;
 public:
 
     DummyServer()
@@ -126,7 +131,7 @@ public:
     }
 
     void
-    registerAlg(std::string name)
+    registerAlg(string name)
     {
         // Create an entry in the registry
         Algorithm &newAlgorithm = registry[name];
@@ -195,7 +200,7 @@ public:
     {
         recentDeletions.clear();
         // Each thread gets a vector to record deletions
-        std::vector<std::vector<stinger_edge_update>> myDeletions(omp_get_max_threads());
+        vector<vector<stinger_edge_update>> myDeletions(omp_get_max_threads());
 
         Hooks::getInstance().region_begin("deletions");
         STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S)
@@ -228,7 +233,7 @@ public:
     {
         for (auto item : registry)
         {
-            std::string name = item.first;
+            string name = item.first;
             Algorithm &alg = item.second;
             Hooks::getInstance().region_begin(name);
             alg.impl->onPre(&alg.data);
@@ -299,7 +304,7 @@ int main(int argc, char **argv)
             server.insertBatch(batch);
 
             //TODO re-enable filtering at some point cerr << "Filtering on >= " << modified_after << "\n";
-
+            cerr << "Running algorithms\n";
             server.runAlgorithms();
             server.printGraphStats();
         }
