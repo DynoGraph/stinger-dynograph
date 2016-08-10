@@ -265,7 +265,7 @@ public:
     void
     updateAlgorithmsBeforeBatch()
     {
-        for (auto item : registry)
+        for (auto &item : registry)
         {
             string name = item.first;
             Algorithm &alg = item.second;
@@ -278,7 +278,7 @@ public:
     void
     updateAlgorithmsAfterBatch()
     {
-        for (auto item : registry)
+        for (auto &item : registry)
         {
             string name = item.first;
             Algorithm &alg = item.second;
