@@ -347,6 +347,7 @@ int main(int argc, char **argv)
 
     for (int64_t trial = 0; trial < args.num_trials; trial++)
     {
+        Hooks::getInstance().trial = trial;
         // Create the stinger data structure
         DummyServer server;
         // Register algorithms to run
@@ -382,7 +383,7 @@ int main(int argc, char **argv)
 
             server.printGraphStats();
         }
-        Hooks::getInstance().next_trial();
+
     }
 
     return 0;
