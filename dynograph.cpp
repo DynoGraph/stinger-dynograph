@@ -27,6 +27,7 @@ extern "C" {
 #include <stinger_alg/dynamic_simple_communities.h>
 #include <stinger_alg/dynamic_simple_communities_updating.h>
 #include <stinger_alg/dynamic_streaming_connected_components.h>
+#include <stinger_net/stinger_alg.h>
 
 using std::cerr;
 using std::shared_ptr;
@@ -153,24 +154,8 @@ public:
     }
 
     void
-    insertBatch(DynoGraph::Batch batch)
+    prepare(DynoGraph::Batch batch, int64_t threshold)
     {
-        // Insert the edges in parallel
-        const int64_t type = 0;
-        const int64_t directed = true; // FIXME
-        Hooks::getInstance().region_begin("insertions");
-        OMP("omp parallel for")
-        for (auto e = batch.begin(); e < batch.end(); ++e)
-        {
-            if (directed)
-            {
-                stinger_incr_edge     (S, type, e->src, e->dst, e->weight, e->timestamp);
-            } else { // undirected
-                stinger_incr_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
-            }
-        }
-        Hooks::getInstance().region_end("insertions");
-
         // Store the insertions in the format that the algorithms expect
         int64_t num_insertions = batch.end() - batch.begin();
         recentInsertions.resize(num_insertions);
@@ -185,12 +170,61 @@ public:
             u.time = e.timestamp;
         }
 
+        // Figure out which deletions will actually happen
+        recentDeletions.clear();
+        // Each thread gets a vector to record deletions
+        vector<vector<stinger_edge_update>> myDeletions(omp_get_max_threads());
+        // Identical to the deletion loop below, but we won't delete anything yet
+        STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S)
+        {
+            if (STINGER_EDGE_TIME_RECENT < threshold) {
+                // Record the deletion
+                stinger_edge_update u;
+                u.source = STINGER_EDGE_SOURCE;
+                u.destination = STINGER_EDGE_DEST;
+                u.weight = STINGER_EDGE_WEIGHT;
+                u.time = STINGER_EDGE_TIME_RECENT;
+                myDeletions[omp_get_thread_num()].push_back(u);
+            }
+        }
+        STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_END();
+
+        // Combine each thread's deletions into a single array
+        for (int i = 0; i < omp_get_max_threads(); ++i)
+        {
+            recentDeletions.insert(recentDeletions.end(), myDeletions[i].begin(), myDeletions[i].end());
+        }
+
+        // Point all the algorithms to the record of insertions and deletions that will occur
         for (auto &item : registry)
         {
             stinger_registered_alg &data = item.second.data;
             data.num_insertions = recentInsertions.size();
             data.insertions = recentInsertions.data();
+            data.num_deletions = recentDeletions.size();
+            data.deletions = recentDeletions.data();
         }
+    }
+
+    void
+    insert(DynoGraph::Batch batch)
+    {
+        // Insert the edges in parallel
+        const int64_t type = 0;
+        const int64_t directed = true; // FIXME
+        Hooks::getInstance().region_begin("insertions");
+        OMP("omp parallel for")
+        for (auto e = batch.begin(); e < batch.end(); ++e)
+        {
+            if (directed)
+            {
+                stinger_incr_edge     (S, type, e->src, e->dst, e->weight, e->timestamp);
+            } else { // undirected
+                stinger_incr_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
+            }
+            Hooks::getInstance().traverse_edge(1);
+        }
+        Hooks::getInstance().region_end("insertions");
     }
 
 
@@ -229,16 +263,28 @@ public:
 
 
     void
-    runAlgorithms()
+    updateAlgorithmsBeforeBatch()
     {
         for (auto item : registry)
         {
             string name = item.first;
             Algorithm &alg = item.second;
-            Hooks::getInstance().region_begin(name);
+            Hooks::getInstance().region_begin(name + "_pre");
             alg.impl->onPre(&alg.data);
+            Hooks::getInstance().region_end(name + "_pre");
+        }
+    }
+
+    void
+    updateAlgorithmsAfterBatch()
+    {
+        for (auto item : registry)
+        {
+            string name = item.first;
+            Algorithm &alg = item.second;
+            Hooks::getInstance().region_begin(name + "_post");
             alg.impl->onPost(&alg.data);
-            Hooks::getInstance().region_end(name);
+            Hooks::getInstance().region_end(name + "_post");
         }
     }
 
@@ -292,6 +338,8 @@ vector<string> split(const string &s, char delim) {
 
 int main(int argc, char **argv)
 {
+    using DynoGraph::msg;
+
     // Process command line arguments
     struct args args = get_args(argc, argv);
     // Load graph data in from the file in batches
@@ -304,7 +352,7 @@ int main(int argc, char **argv)
         // Register algorithms to run
         for (string algName : split(args.alg_name, ' '))
         {
-            cerr << "Initializing " << algName << "...\n";
+            cerr << msg << "Initializing " << algName << "...\n";
             server.registerAlg(algName);
         }
 
@@ -313,18 +361,25 @@ int main(int argc, char **argv)
         {
             DynoGraph::Batch batch = dataset.getBatch(i);
 
-            int64_t modified_after = dataset.getTimestampForWindow(i, args.window_size);
+            int64_t threshold = dataset.getTimestampForWindow(i, args.window_size);
+            server.prepare(batch, threshold);
+
+            cerr << msg << "Running algorithms (pre-processing step)";
+            server.updateAlgorithmsBeforeBatch();
+
             if (args.enable_deletions)
             {
-                cerr << "Deleting edges older than " << modified_after << "\n";
-                server.deleteOlderThan(modified_after);
+                cerr << msg << "Deleting edges older than " << threshold << "\n";
+                server.deleteOlderThan(threshold);
             }
-            cerr << "Inserting batch " << i << "\n";
-            server.insertBatch(batch);
 
-            //TODO re-enable filtering at some point cerr << "Filtering on >= " << modified_after << "\n";
-            cerr << "Running algorithms\n";
-            server.runAlgorithms();
+            cerr << msg << "Inserting batch " << i << "\n";
+            server.insert(batch);
+
+            //TODO re-enable filtering at some point cerr << msg << "Filtering on >= " << threshold << "\n";
+            cerr << msg << "Running algorithms (post-processing step)\n";
+            server.updateAlgorithmsAfterBatch();
+
             server.printGraphStats();
         }
         Hooks::getInstance().next_trial();
