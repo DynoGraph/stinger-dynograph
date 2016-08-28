@@ -380,7 +380,7 @@ int main(int argc, char **argv)
             int64_t threshold = dataset.getTimestampForWindow(i, args.window_size);
             server.prepare(batch, threshold);
 
-            cerr << msg << "Running algorithms (pre-processing step)";
+            cerr << msg << "Running algorithms (pre-processing step)\n";
             server.updateAlgorithmsBeforeBatch();
 
             if (args.enable_deletions)
