@@ -240,6 +240,8 @@ public:
             Hooks::getInstance().traverse_edge(1);
         }
         Hooks::getInstance().region_end("insertions");
+
+        updateVertexCount();
     }
 
 
@@ -274,8 +276,22 @@ public:
         {
             recentDeletions.insert(recentDeletions.end(), myDeletions[i].begin(), myDeletions[i].end());
         }
+
+        updateVertexCount();
     }
 
+    void
+    updateVertexCount()
+    {
+        // Count the number of active vertices
+        // Lots of algs need this, so we'll do it in the server to save time
+        int64_t max_active_vertex = stinger_max_active_vertex(S);
+        for (auto &item : registry)
+        {
+            stinger_registered_alg &data = item.second.data;
+            data.max_active_vertex = max_active_vertex;
+        }
+    }
 
     void
     updateAlgorithmsBeforeBatch()
