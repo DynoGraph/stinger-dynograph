@@ -35,6 +35,7 @@ extern "C" {
 }
 #include <stinger_alg/streaming_algorithm.h>
 #include <stinger_alg/dynamic_betweenness.h>
+#include <stinger_alg/dynamic_bfs.h>
 #include <stinger_alg/dynamic_static_components.h>
 #include <stinger_alg/dynamic_clustering.h>
 #include <stinger_alg/dynamic_kcore.h>
@@ -102,10 +103,13 @@ struct Algorithm
     shared_ptr<IDynamicGraphAlgorithm> impl;
 };
 
-shared_ptr<IDynamicGraphAlgorithm> createAlgorithm(string name)
+shared_ptr<IDynamicGraphAlgorithm> createAlgorithm(string name, uint64_t nv)
 {
     if        (name == "bc") {
         return make_shared<BetweennessCentrality>(256, 0.5, 1);
+    } else if (name == "bfs") {
+        DynoGraph::VertexPicker picker(nv, 0);
+        return make_shared<BreadthFirstSearch>(picker.next());
     } else if (name == "cc") {
         return make_shared<ConnectedComponents>();
     } else if (name == "clustering") {
@@ -130,14 +134,16 @@ shared_ptr<IDynamicGraphAlgorithm> createAlgorithm(string name)
 class DummyServer
 {
 private:
+    uint64_t maxNumVertices;
     stinger_t * S;
     map<string, Algorithm> registry;
     vector<stinger_edge_update> recentInsertions;
     vector<stinger_edge_update> recentDeletions;
 public:
 
-    DummyServer()
+    DummyServer(uint64_t nv) : maxNumVertices(nv)
     {
+        // TODO call stinger_new_full to customize memory usage
         S = stinger_new();
     }
 
@@ -153,7 +159,7 @@ public:
         Algorithm &newAlgorithm = registry[name];
 
         // Create the implementation
-        shared_ptr<IDynamicGraphAlgorithm> impl = createAlgorithm(name);
+        shared_ptr<IDynamicGraphAlgorithm> impl = createAlgorithm(name, maxNumVertices);
         newAlgorithm.impl = impl;
 
         // Initialize the "server" data about this algorithm
@@ -380,7 +386,7 @@ int main(int argc, char **argv)
     {
         Hooks::getInstance().trial = trial;
         // Create the stinger data structure
-        DummyServer server;
+        DummyServer server(dataset.getMaxNumVertices());
         // Register algorithms to run
         for (string algName : split(args.alg_name, ' '))
         {
