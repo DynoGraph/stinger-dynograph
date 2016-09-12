@@ -108,8 +108,7 @@ shared_ptr<IDynamicGraphAlgorithm> createAlgorithm(string name, uint64_t nv)
     if        (name == "bc") {
         return make_shared<BetweennessCentrality>(256, 0.5, 1);
     } else if (name == "bfs") {
-        DynoGraph::VertexPicker picker(nv, 0);
-        return make_shared<BreadthFirstSearch>(picker.next());
+        return make_shared<BreadthFirstSearch>();
     } else if (name == "cc") {
         return make_shared<ConnectedComponents>();
     } else if (name == "clustering") {
