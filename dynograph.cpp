@@ -106,7 +106,7 @@ struct Algorithm
 shared_ptr<IDynamicGraphAlgorithm> createAlgorithm(string name, uint64_t nv)
 {
     if        (name == "bc") {
-        return make_shared<BetweennessCentrality>(256, 0.5, 1);
+        return make_shared<BetweennessCentrality>(128, 0.5, 1);
     } else if (name == "bfs") {
         return make_shared<BreadthFirstSearch>();
     } else if (name == "cc") {
