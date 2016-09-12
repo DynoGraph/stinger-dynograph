@@ -259,7 +259,7 @@ public:
         vector<vector<stinger_edge_update>> myDeletions(omp_get_max_threads());
 
         Hooks::getInstance().region_begin("deletions");
-        STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S)
+        STINGER_RAW_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S)
         {
             if (STINGER_EDGE_TIME_RECENT < threshold) {
                 // Record the deletion
@@ -273,7 +273,7 @@ public:
                 update_edge_data_and_direction (S, current_eb__, i__, ~STINGER_EDGE_DEST, 0, 0, STINGER_EDGE_DIRECTION, EDGE_WEIGHT_SET);
             }
         }
-        STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_END();
+        STINGER_RAW_FORALL_EDGES_OF_ALL_TYPES_END();
 
         Hooks::getInstance().region_end("deletions");
         // Combine each thread's deletions into a single array
