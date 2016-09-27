@@ -1,6 +1,9 @@
 [submodule "lib/dynograph_util"]
 	path = lib/dynograph_util
-	url = git@github.gatech.edu:ehein6/dynograph_util.git
+	url = ../dynograph_util.git
 [submodule "lib/hooks"]
 	path = lib/hooks
-	url = git@github.gatech.edu:ehein6/hooks.git
+	url = ../hooks.git
+[submodule "lib/stinger"]
+	path = lib/stinger
+	url = ../stinger.git
