@@ -233,7 +233,8 @@ public:
         const int64_t type = 0;
         const int64_t directed = true; // FIXME
         Hooks::getInstance().region_begin("insertions");
-        OMP("omp parallel for")
+        int64_t chunksize = 8192;
+        OMP("omp parallel for schedule(dynamic, chunksize)")
         for (auto e = batch.begin(); e < batch.end(); ++e)
         {
             if (directed)
