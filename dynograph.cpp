@@ -381,10 +381,11 @@ int main(int argc, char **argv)
     struct args args = get_args(argc, argv);
     // Load graph data in from the file in batches
     DynoGraph::Dataset dataset(args.input_path, args.num_batches);
+    Hooks& hooks = Hooks::getInstance();
 
     for (int64_t trial = 0; trial < args.num_trials; trial++)
     {
-        Hooks::getInstance().trial = trial;
+        hooks.trial = trial;
         // Create the stinger data structure
         DummyServer server(dataset.getMaxNumVertices());
         // Register algorithms to run
@@ -397,6 +398,7 @@ int main(int argc, char **argv)
         // Run the algorithm(s) after each inserted batch
         for (int64_t i = 0; i < dataset.getNumBatches(); ++i)
         {
+            hooks.batch = i;
             DynoGraph::Batch batch = dataset.getBatch(i);
 
             int64_t threshold = dataset.getTimestampForWindow(i, args.window_size);
