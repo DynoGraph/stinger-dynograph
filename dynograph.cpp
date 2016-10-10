@@ -142,8 +142,17 @@ public:
 
     DummyServer(uint64_t nv) : maxNumVertices(nv)
     {
-        // TODO call stinger_new_full to customize memory usage
-        S = stinger_new();
+        stinger_config_t config = {
+            nv, //int64_t nv;
+            0, //int64_t nebs;
+            1, //int64_t netypes;
+            1, //int64_t nvtypes;
+            0, //size_t memory_size;
+            0, //uint8_t no_map_none_etype;
+            0, //uint8_t no_map_none_vtype;
+            1, //uint8_t no_resize;
+        };
+        S = stinger_new_full(&config);
     }
 
     ~DummyServer()
