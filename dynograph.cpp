@@ -103,7 +103,7 @@ struct Algorithm
     shared_ptr<IDynamicGraphAlgorithm> impl;
 };
 
-shared_ptr<IDynamicGraphAlgorithm> createAlgorithm(string name, uint64_t nv)
+shared_ptr<IDynamicGraphAlgorithm> createAlgorithm(string name)
 {
     if        (name == "bc") {
         return make_shared<BetweennessCentrality>(128, 0.5, 1);
@@ -167,7 +167,7 @@ public:
         Algorithm &newAlgorithm = registry[name];
 
         // Create the implementation
-        shared_ptr<IDynamicGraphAlgorithm> impl = createAlgorithm(name, maxNumVertices);
+        shared_ptr<IDynamicGraphAlgorithm> impl = createAlgorithm(name);
         newAlgorithm.impl = impl;
 
         // Initialize the "server" data about this algorithm
@@ -309,6 +309,17 @@ public:
     }
 
     void
+    pickSources(Algorithm& alg)
+    {
+        if (auto b = std::dynamic_pointer_cast<BreadthFirstSearch>(alg.impl))
+        {
+            b->pickSource(&alg.data);
+        } else if (auto b = std::dynamic_pointer_cast<BetweennessCentrality>(alg.impl)) {
+            b->pickSources(&alg.data);
+        }
+    }
+
+    void
     updateAlgorithmsBeforeBatch()
     {
         for (auto &item : registry)
@@ -328,6 +339,8 @@ public:
         {
             string name = item.first;
             Algorithm &alg = item.second;
+            // HACK need to generate random vertices outside of critical section
+            pickSources(alg);
             Hooks::getInstance().region_begin(name + "_post");
             alg.impl->onPost(&alg.data);
             Hooks::getInstance().region_end(name + "_post");
