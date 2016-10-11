@@ -145,7 +145,8 @@ private:
     stinger_config_t generate_stinger_config(int64_t nv) {
 
         // Start with size we will try to fill
-        uint64_t sz = stinger_max_memsize();
+        // Scaled by 75% because that's what stinger_new_full does
+        uint64_t sz = ((uint64_t)stinger_max_memsize() * 3)/4;
 
         // Subtract storage for vertices
         sz -= stinger_vertices_size(nv);
