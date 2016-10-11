@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 extern "C" {
 #include <stinger_core/stinger.h>
+#include <stinger_core/core_util.h>
 #include <stinger_alg/bfs.h>
 #include <stinger_alg/betweenness.h>
 #include <stinger_alg/clustering.h>
@@ -133,31 +134,73 @@ shared_ptr<IDynamicGraphAlgorithm> createAlgorithm(string name)
 class DummyServer
 {
 private:
-    uint64_t maxNumVertices;
     stinger_t * S;
     map<string, Algorithm> registry;
     vector<stinger_edge_update> recentInsertions;
     vector<stinger_edge_update> recentDeletions;
-public:
 
-    DummyServer(uint64_t nv) : maxNumVertices(nv)
-    {
+    // Figure out how many edge blocks we can allocate to fill STINGER_MAX_MEMSIZE
+    // Assumes we need just enough room for nv vertices and puts the rest into edge blocks
+    // Basically implements calculate_stinger_size() in reverse
+    stinger_config_t generate_stinger_config(int64_t nv) {
+
+        // Start with size we will try to fill
+        uint64_t sz = stinger_max_memsize();
+
+        // Subtract storage for vertices
+        sz -= stinger_vertices_size(nv);
+        sz -= stinger_physmap_size(nv);
+
+        // Assume just one etype and vtype
+        int64_t netypes = 1;
+        int64_t nvtypes = 1;
+        sz -= stinger_names_size(netypes);
+        sz -= stinger_names_size(nvtypes);
+
+        // Leave room for the edge block tracking structures
+        sz -= sizeof(stinger_ebpool);
+        sz -= sizeof(stinger_etype_array);
+
+        // Finally, calculate how much room is left for the edge blocks themselves
+        int64_t nebs = sz / (sizeof(stinger_eb) + sizeof(eb_index_t));
+
         stinger_config_t config = {
-            nv, //int64_t nv;
-            0, //int64_t nebs;
-            1, //int64_t netypes;
-            1, //int64_t nvtypes;
+            nv,
+            nebs,
+            netypes,
+            nvtypes,
             0, //size_t memory_size;
             0, //uint8_t no_map_none_etype;
             0, //uint8_t no_map_none_vtype;
             1, //uint8_t no_resize;
         };
+
+        return config;
+    }
+
+public:
+
+    DummyServer(uint64_t nv)
+    {
+        stinger_config_t config = generate_stinger_config(nv);
         S = stinger_new_full(&config);
+        printStingerSize();
     }
 
     ~DummyServer()
     {
         stinger_free(S);
+    }
+
+    void printStingerSize()
+    {
+        size_t stinger_bytes = calculate_stinger_size(S->max_nv, S->max_neblocks, S->max_netypes, S->max_nvtypes).size;
+        cerr << DynoGraph::msg <<
+        "Initialized stinger with storage for "
+        << S->max_nv << " vertices and "
+        << S->max_neblocks * STINGER_EDGEBLOCKSIZE << " edges.\n";
+        cerr << DynoGraph::msg <<
+        "Stinger is consuming " << stinger_bytes / (1024*1024) << "MB of RAM\n";
     }
 
     void
