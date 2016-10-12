@@ -363,7 +363,7 @@ public:
         return num_edges;
     }
 
-    void printGraphStats()
+    void printGraphStats(long trial, long batchId)
     {
         stinger_fragmentation_t * stats = (stinger_fragmentation_t*)xmalloc(sizeof(struct stinger_fragmentation_t));
         int64_t nv = stinger_max_active_vertex(S) + 1;
@@ -375,7 +375,9 @@ public:
         printf("\"num_empty_edges\"         :%ld,\n", stats->num_empty_edges);
         printf("\"num_fragmented_blocks\"   :%ld,\n", stats->num_fragmented_blocks);
         printf("\"edge_blocks_in_use\"      :%ld,\n", stats->edge_blocks_in_use);
-        printf("\"num_empty_blocks\"        :%ld\n" , stats->num_empty_blocks);
+        printf("\"num_empty_blocks\"        :%ld,\n", stats->num_empty_blocks);
+        printf("\"trial\"                   :%ld,\n", trial);
+        printf("\"batch\"                   :%ld\n" , batchId);
         printf("}\n");
         free(stats);
     }
@@ -446,7 +448,7 @@ int main(int argc, char **argv)
             cerr << msg << "Running algorithms (post-processing step)\n";
             server.updateAlgorithmsAfterBatch();
 
-            server.printGraphStats();
+            server.printGraphStats(trial, i);
         }
 
     }
