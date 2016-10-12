@@ -420,12 +420,14 @@ int main(int argc, char **argv)
         }
 
         // Run the algorithm(s) after each inserted batch
-        for (int64_t i = 0; i < dataset.getNumBatches(); ++i)
+        for (int64_t i = 0; i < dataset.batches.size(); ++i)
         {
             hooks.batch = i;
-            DynoGraph::Batch batch = dataset.getBatch(i);
+            hooks.region_begin("preprocess");
+            DynoGraph::Batch & batch = *dataset.getBatch(i);
+            hooks.region_end("preprocess");
 
-            int64_t threshold = dataset.getTimestampForWindow(i, args.window_size);
+            int64_t threshold = dataset.getTimestampForWindow(i);
             server.prepare(batch, threshold);
 
             cerr << msg << "Running algorithms (pre-processing step)\n";
