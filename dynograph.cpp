@@ -56,48 +56,6 @@ using std::map;
 
 using namespace gt::stinger;
 
-vector<int64_t> bfs_sources = {3, 30, 300, 4, 40, 400};
-
-struct args
-{
-    const char* alg_name;
-    const char* input_path;
-    int64_t window_size;
-    int64_t num_batches;
-    int64_t num_trials;
-    int64_t enable_deletions;
-};
-
-struct args
-get_args(int argc, char **argv)
-{
-    struct args args;
-    if (argc != 6)
-    {
-        cerr << "Usage: alg_name input_path num_batches window_size num_trials \n";
-        exit(-1);
-    }
-
-    args.alg_name = argv[1];
-    args.input_path = argv[2];
-    args.num_batches = atoll(argv[3]);
-    args.window_size = atoll(argv[4]);
-    args.num_trials = atoll(argv[5]);
-    if (args.window_size == args.num_batches)
-    {
-        args.enable_deletions = 0;
-    } else {
-        args.enable_deletions = 1;
-    }
-    if (args.num_batches < 1 || args.window_size < 1 || args.num_trials < 1)
-    {
-        cerr << "num_batches, window_size, and num_trials must be positive\n";
-        exit(-1);
-    }
-
-    return args;
-}
-
 struct Algorithm
 {
     stinger_registered_alg data;
@@ -444,9 +402,9 @@ int main(int argc, char **argv)
     using DynoGraph::msg;
 
     // Process command line arguments
-    struct args args = get_args(argc, argv);
+    DynoGraph::Args args(argc, argv);
     // Load graph data in from the file in batches
-    DynoGraph::Dataset dataset(args.input_path, args.num_batches);
+    DynoGraph::Dataset dataset(args);
     Hooks& hooks = Hooks::getInstance();
 
     for (int64_t trial = 0; trial < args.num_trials; trial++)
