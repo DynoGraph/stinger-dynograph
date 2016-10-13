@@ -185,7 +185,7 @@ public:
     }
 
     void
-    prepare(DynoGraph::Batch batch, int64_t threshold)
+    prepare(DynoGraph::Batch& batch, int64_t threshold)
     {
         // Store the insertions in the format that the algorithms expect
         int64_t num_insertions = batch.end() - batch.begin();
@@ -238,7 +238,7 @@ public:
     }
 
     void
-    insert(DynoGraph::Batch batch)
+    insert(DynoGraph::Batch& batch)
     {
         // Insert the edges in parallel
         const int64_t type = 0;
@@ -426,11 +426,11 @@ int main(int argc, char **argv)
         {
             hooks.batch = i;
             hooks.region_begin("preprocess");
-            DynoGraph::Batch & batch = *dataset.getBatch(i);
+            std::unique_ptr<DynoGraph::Batch> batch = dataset.getBatch(i);
             hooks.region_end("preprocess");
 
             int64_t threshold = dataset.getTimestampForWindow(i);
-            server.prepare(batch, threshold);
+            server.prepare(*batch, threshold);
 
             cerr << msg << "Running algorithms (pre-processing step)\n";
             server.updateAlgorithmsBeforeBatch();
@@ -442,7 +442,7 @@ int main(int argc, char **argv)
             }
 
             cerr << msg << "Inserting batch " << i << "\n";
-            server.insert(batch);
+            server.insert(*batch);
 
             //TODO re-enable filtering at some point cerr << msg << "Filtering on >= " << threshold << "\n";
             cerr << msg << "Running algorithms (post-processing step)\n";
