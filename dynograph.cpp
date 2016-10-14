@@ -55,6 +55,7 @@ using std::vector;
 using std::map;
 
 using namespace gt::stinger;
+using DynoGraph::msg;
 
 struct Algorithm
 {
@@ -87,6 +88,21 @@ shared_ptr<IDynamicGraphAlgorithm> createAlgorithm(string name)
         exit(-1);
     }
 
+}
+
+// Helper functions to split strings
+// http://stackoverflow.com/a/236803/1877086
+void split(const string &s, char delim, vector<string> &elems) {
+    stringstream ss(s);
+    string item;
+    while (getline(ss, item, delim)) {
+        elems.push_back(item);
+    }
+}
+vector<string> split(const string &s, char delim) {
+    vector<string> elems;
+    split(s, delim, elems);
+    return elems;
 }
 
 class DummyServer
@@ -139,11 +155,18 @@ private:
 
 public:
 
-    DummyServer(uint64_t nv)
+    DummyServer(uint64_t nv, std::string alg_names)
     {
         stinger_config_t config = generate_stinger_config(nv);
         S = stinger_new_full(&config);
         printStingerSize();
+
+        // Register algorithms to run
+        for (string algName : split(alg_names, ' '))
+        {
+            cerr << msg << "Initializing " << algName << "...\n";
+            registerAlg(algName);
+        }
     }
 
     ~DummyServer()
@@ -384,25 +407,10 @@ public:
 
 };
 
-// Helper functions to split strings
-// http://stackoverflow.com/a/236803/1877086
-void split(const string &s, char delim, vector<string> &elems) {
-    stringstream ss(s);
-    string item;
-    while (getline(ss, item, delim)) {
-        elems.push_back(item);
-    }
-}
-vector<string> split(const string &s, char delim) {
-    vector<string> elems;
-    split(s, delim, elems);
-    return elems;
-}
+
 
 int main(int argc, char **argv)
 {
-    using DynoGraph::msg;
-
     // Process command line arguments
     DynoGraph::Args args(argc, argv);
     // Load graph data in from the file in batches
@@ -413,13 +421,7 @@ int main(int argc, char **argv)
     {
         hooks.trial = trial;
         // Create the stinger data structure
-        DummyServer server(dataset.getMaxNumVertices());
-        // Register algorithms to run
-        for (string algName : split(args.alg_name, ' '))
-        {
-            cerr << msg << "Initializing " << algName << "...\n";
-            server.registerAlg(algName);
-        }
+        DummyServer server(dataset.getMaxNumVertices(), args.alg_name);
 
         // Run the algorithm(s) after each inserted batch
         for (int64_t i = 0; i < dataset.batches.size(); ++i)
@@ -449,6 +451,12 @@ int main(int argc, char **argv)
             server.updateAlgorithmsAfterBatch();
 
             server.printGraphStats(trial, i);
+
+            // Clear out the graph in snapshot mode
+            if (args.sort_mode == DynoGraph::Args::SNAPSHOT)
+            {
+                server = DummyServer(dataset.getMaxNumVertices(), args.alg_name);
+            }
         }
 
     }
