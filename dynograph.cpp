@@ -46,6 +46,8 @@ extern "C" {
 #include <stinger_alg/dynamic_streaming_connected_components.h>
 #include <stinger_net/stinger_alg.h>
 
+#include <stinger_core/stinger_batch_insert.h>
+
 using std::cerr;
 using std::shared_ptr;
 using std::make_shared;
@@ -259,7 +261,32 @@ public:
             data.deletions = recentDeletions.data();
         }
     }
+#define EXPERIMENTAL_BATCH_INSERT
+#ifdef EXPERIMENTAL_BATCH_INSERT
+    void
+    insert(DynoGraph::Batch& batch)
+    {
+        const size_t batch_size = batch.end() - batch.begin();
+        std::vector<stinger_edge_update> updates(batch_size);
+        OMP("omp parallel for")
+        for (int64_t i = 0; i < batch_size; ++i)
+        {
+            stinger_edge_update &u = updates[i];
+            DynoGraph::Edge &e = *(batch.begin() + i);
+            u.source = e.src;
+            u.destination = e.dst;
+            u.weight = e.weight;
+            u.time = e.timestamp;
+        }
 
+        Hooks::getInstance().region_begin("insertions");
+        Hooks::getInstance().traverse_edge(updates.size());
+        stinger_batch_incr_edge(S, updates);
+        Hooks::getInstance().region_end("insertions");
+
+    }
+
+#else
     void
     insert(DynoGraph::Batch& batch)
     {
@@ -267,6 +294,7 @@ public:
         const int64_t type = 0;
         const int64_t directed = true; // FIXME
         Hooks::getInstance().region_begin("insertions");
+
         int64_t chunksize = 8192;
         OMP("omp parallel for schedule(dynamic, chunksize)")
         for (auto e = batch.begin(); e < batch.end(); ++e)
@@ -283,7 +311,7 @@ public:
 
         updateVertexCount();
     }
-
+#endif
 
     // Deletes edges that haven't been modified recently
     void
