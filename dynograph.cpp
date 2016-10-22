@@ -261,27 +261,37 @@ public:
             data.deletions = recentDeletions.data();
         }
     }
-#define EXPERIMENTAL_BATCH_INSERT
-#ifdef EXPERIMENTAL_BATCH_INSERT
+
+#ifdef USE_STINGER_BATCH_INSERT
+
+    struct EdgeAdapter : public DynoGraph::Edge
+    {
+        int64_t result;
+        EdgeAdapter(){}
+        EdgeAdapter(const DynoGraph::Edge e) : DynoGraph::Edge(e) { result = 0; }
+        typedef EdgeAdapter edge;
+        static int64_t get_type(const edge &u) { return 0; }
+        static void set_type(edge &u, int64_t v) {  }
+        static int64_t get_source(const edge &u) { return u.src; }
+        static void set_source(edge &u, int64_t v) { u.src = v; }
+        static int64_t get_dest(const edge &u) { return u.dst; }
+        static void set_dest(edge &u, int64_t v) { u.dst = v; }
+        static int64_t get_weight(const edge &u) { return u.weight; }
+        static int64_t get_time(const edge &u) { return u.timestamp; }
+        static int64_t get_result(const edge& u) { return u.result; }
+        static int64_t set_result(edge &u, int64_t v) { u.result = v; }
+    };
+
     void
     insert(DynoGraph::Batch& batch)
     {
         const size_t batch_size = batch.end() - batch.begin();
-        std::vector<stinger_edge_update> updates(batch_size);
-        OMP("omp parallel for")
-        for (int64_t i = 0; i < batch_size; ++i)
-        {
-            stinger_edge_update &u = updates[i];
-            DynoGraph::Edge &e = *(batch.begin() + i);
-            u.source = e.src;
-            u.destination = e.dst;
-            u.weight = e.weight;
-            u.time = e.timestamp;
-        }
-
+        std::vector<EdgeAdapter> updates; updates.reserve(batch_size);
+        std::transform(batch.begin(), batch.end(), std::back_inserter(updates),
+            [](const DynoGraph::Edge &e){ return EdgeAdapter(e); });
         Hooks::getInstance().region_begin("insertions");
         Hooks::getInstance().traverse_edge(updates.size());
-        stinger_batch_incr_edge(S, updates);
+        stinger_batch_incr_edges<EdgeAdapter>(S, updates.begin(), updates.end());
         Hooks::getInstance().region_end("insertions");
 
     }
