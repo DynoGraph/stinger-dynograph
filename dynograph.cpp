@@ -285,15 +285,18 @@ public:
     void
     insert(DynoGraph::Batch& batch)
     {
-        const size_t batch_size = batch.end() - batch.begin();
-        std::vector<EdgeAdapter> updates; updates.reserve(batch_size);
-        std::transform(batch.begin(), batch.end(), std::back_inserter(updates),
-            [](const DynoGraph::Edge &e){ return EdgeAdapter(e); });
+        const size_t batch_size = std::distance(batch.begin(), batch.end());
+        std::vector<EdgeAdapter> updates(batch_size);
+        OMP("omp parallel for")
+        for (size_t i = 0; i < updates.size(); ++i)
+        {
+            DynoGraph::Edge &e = *(batch.begin() + i);
+            updates[i] = EdgeAdapter(e);
+        }
         Hooks::getInstance().region_begin("insertions");
         Hooks::getInstance().traverse_edge(updates.size());
         stinger_batch_incr_edges<EdgeAdapter>(S, updates.begin(), updates.end());
         Hooks::getInstance().region_end("insertions");
-
     }
 
 #else
