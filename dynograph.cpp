@@ -147,7 +147,10 @@ struct StingerGraph
         }
         Hooks::getInstance().region_begin("insertions");
         Hooks::getInstance().traverse_edge(updates.size());
-        stinger_batch_incr_edges<EdgeAdapter>(S, updates.begin(), updates.end());
+        if (batch.dataset.isDirected())
+        { stinger_batch_incr_edges<EdgeAdapter>(S, updates.begin(), updates.end()); }
+        else
+        { stinger_batch_incr_edge_pairs<EdgeAdapter>(S, updates.begin(), updates.end()); }
         Hooks::getInstance().region_end("insertions");
     }
 
@@ -157,7 +160,7 @@ struct StingerGraph
     {
         // Insert the edges in parallel
         const int64_t type = 0;
-        const int64_t directed = true; // FIXME
+        const bool directed = batch.dataset.isDirected();
         Hooks::getInstance().region_begin("insertions");
 
         int64_t chunksize = 8192;
@@ -335,6 +338,7 @@ public:
     prepare(DynoGraph::Batch& batch, int64_t threshold)
     {
         // Store the insertions in the format that the algorithms expect
+        assert(batch.dataset.isDirected()); // Not sure what algs expect for undirected batch
         int64_t num_insertions = batch.end() - batch.begin();
         recentInsertions.resize(num_insertions);
         OMP("omp parallel for")
