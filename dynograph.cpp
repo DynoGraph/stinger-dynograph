@@ -166,9 +166,9 @@ struct StingerGraph
         {
             if (directed)
             {
-                stinger_incr_edge     (graph.S, type, e->src, e->dst, e->weight, e->timestamp);
+                stinger_incr_edge     (S, type, e->src, e->dst, e->weight, e->timestamp);
             } else { // undirected
-                stinger_incr_edge_pair(graph.S, type, e->src, e->dst, e->weight, e->timestamp);
+                stinger_incr_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
             }
             Hooks::getInstance().traverse_edge(1);
         }
@@ -469,7 +469,7 @@ int main(int argc, char **argv)
         {
             hooks.batch = i;
             hooks.region_begin("preprocess");
-            std::unique_ptr<DynoGraph::Batch> batch = dataset.getBatch(i);
+            std::shared_ptr<DynoGraph::Batch> batch = dataset.getBatch(i);
             hooks.region_end("preprocess");
 
             int64_t threshold = dataset.getTimestampForWindow(i);
@@ -496,8 +496,9 @@ int main(int argc, char **argv)
             // Clear out the graph between batches in snapshot mode
             if (args.sort_mode == DynoGraph::Args::SNAPSHOT)
             {
-                // server = StingerServer() is no good here, because this would allocate a new stinger before deallocating the old one.
-                // We probably won't have enough memory for that,
+                // server = StingerServer() is no good here,
+                // because this would allocate a new stinger before deallocating the old one.
+                // We probably won't have enough memory for that.
                 // Instead, use an explicit destructor call followed by placement new
                 server.~StingerServer();
                 new(&server) StingerServer(dataset.getMaxNumVertices(), args.alg_name);
