@@ -145,13 +145,14 @@ struct StingerGraph
             DynoGraph::Edge &e = *(batch.begin() + i);
             updates[i] = EdgeAdapter(e);
         }
-        Hooks::getInstance().region_begin("insertions");
-        Hooks::getInstance().traverse_edge(updates.size());
+        Hooks &hooks = Hooks::getInstance();
+        hooks.region_begin("insertions");
+        hooks.traverse_edges(updates.size());
         if (batch.dataset.isDirected())
         { stinger_batch_incr_edges<EdgeAdapter>(S, updates.begin(), updates.end()); }
         else
         { stinger_batch_incr_edge_pairs<EdgeAdapter>(S, updates.begin(), updates.end()); }
-        Hooks::getInstance().region_end("insertions");
+        hooks.region_end();
     }
 
 #else
@@ -173,9 +174,9 @@ struct StingerGraph
             } else { // undirected
                 stinger_incr_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
             }
-            Hooks::getInstance().traverse_edge(1);
+            Hooks::getInstance().traverse_edges(1);
         }
-        Hooks::getInstance().region_end("insertions");
+        Hooks::getInstance().region_end();
     }
 #endif
 
@@ -183,9 +184,11 @@ struct StingerGraph
     void
     deleteOlderThan(int64_t threshold)
     {
-        Hooks::getInstance().region_begin("deletions");
+        Hooks &hooks = Hooks::getInstance();
+        hooks.region_begin("deletions");
         STINGER_RAW_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S)
         {
+            hooks.traverse_edges(1);
             if (STINGER_EDGE_TIME_RECENT < threshold) {
                 // Record the deletion
                 stinger_edge_update u;
@@ -198,7 +201,7 @@ struct StingerGraph
             }
         }
         STINGER_RAW_FORALL_EDGES_OF_ALL_TYPES_END();
-        Hooks::getInstance().region_end("deletions");
+        hooks.region_end();
     }
 
     void printSize()
@@ -418,7 +421,7 @@ public:
         {
             hooks.region_begin(alg.name() + "_pre");
             alg.onPre();
-            hooks.region_end(alg.name() + "_pre");
+            hooks.region_end();
         }
     }
 
@@ -432,25 +435,22 @@ public:
             alg.pickSources();
             hooks.region_begin(alg.name() + "_post");
             alg.onPost();
-            hooks.region_end(alg.name() + "_post");
+            hooks.region_end();
         }
     }
 
-    void printStats(long trial, long batchId)
+    void recordStats()
     {
         int64_t nv = stinger_max_active_vertex(graph.S) + 1;
         stinger_fragmentation_t stats;
         stinger_fragmentation (graph.S, nv, &stats);
-        printf("{\n");
-        printf("\"num_vertices\"            :%ld,\n", nv);
-        printf("\"num_edges\"               :%ld,\n", stats.num_edges);
-        printf("\"num_empty_edges\"         :%ld,\n", stats.num_empty_edges);
-        printf("\"num_fragmented_blocks\"   :%ld,\n", stats.num_fragmented_blocks);
-        printf("\"edge_blocks_in_use\"      :%ld,\n", stats.edge_blocks_in_use);
-        printf("\"num_empty_blocks\"        :%ld,\n", stats.num_empty_blocks);
-        printf("\"trial\"                   :%ld,\n", trial);
-        printf("\"batch\"                   :%ld\n" , batchId);
-        printf("}\n");
+        Hooks &hooks = Hooks::getInstance();
+        hooks.set_attr("num_vertices", nv);
+        hooks.set_attr("num_edges", stats.num_edges);
+        hooks.set_attr("num_empty_edges", stats.num_empty_edges);
+        hooks.set_attr("num_fragmented_blocks", stats.num_fragmented_blocks);
+        hooks.set_attr("edge_blocks_in_use", stats.edge_blocks_in_use);
+        hooks.set_attr("num_empty_blocks", stats.num_empty_blocks);
     }
 };
 
@@ -464,17 +464,17 @@ int main(int argc, char **argv)
 
     for (int64_t trial = 0; trial < args.num_trials; trial++)
     {
-        hooks.trial = trial;
+        hooks.set_attr("trial", trial);
         // Create the stinger data structure
         StingerServer server(dataset.getMaxNumVertices(), args.alg_name);
 
         // Run the algorithm(s) after each inserted batch
         for (int64_t i = 0; i < dataset.batches.size(); ++i)
         {
-            hooks.batch = i;
+            hooks.set_attr("batch", i);
             hooks.region_begin("preprocess");
             std::shared_ptr<DynoGraph::Batch> batch = dataset.getBatch(i);
-            hooks.region_end("preprocess");
+            hooks.region_end();
 
             int64_t threshold = dataset.getTimestampForWindow(i);
             server.prepare(*batch, threshold);
@@ -495,7 +495,7 @@ int main(int argc, char **argv)
             cerr << msg << "Running algorithms (post-processing step)\n";
             server.updateAlgorithmsAfterBatch();
 
-            server.printStats(trial, i);
+            server.recordStats();
 
             // Clear out the graph between batches in snapshot mode
             if (args.sort_mode == DynoGraph::Args::SNAPSHOT)
