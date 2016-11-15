@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 2.8.11)
 project (DYNOGRAPH)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-set(USE_STINGER_BATCH_INSERT FALSE CACHE BOOL "Use the new stinger_batch functions to do insertions.")
+set(USE_STINGER_BATCH_INSERT TRUE CACHE BOOL "Use the new stinger_batch functions to do insertions.")
 if(${USE_STINGER_BATCH_INSERT})
   add_definitions(-DUSE_STINGER_BATCH_INSERT)
 endif()
