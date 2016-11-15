@@ -14,13 +14,13 @@ This implementation of DynoGraph uses the graph data structure and algorithms fr
 1. Check out the code. This repo uses git [submodules](https://git-scm.com/docs/git-submodule), so to get everything you'll need to add the recursive flag:
 
     ```
-    git clone --recursive git@github.com:ehein6/DynoGraph.git
+    git clone --recursive git@github.com:DynoGraph/stinger-dynograph.git
     ```
 
 2. Configure the project with CMake:
 
     ```
-    cd DynoGraph
+    cd stinger-dynograph
     mkdir build && cd build
     cmake ..
     ```
@@ -28,7 +28,7 @@ This implementation of DynoGraph uses the graph data structure and algorithms fr
 3. Build. Replace '4' with the number of threads on your machine:
 
     ```
-    make -j 4
+    make dynograph -j 4
     ```
 
 ## Running
@@ -36,7 +36,7 @@ This implementation of DynoGraph uses the graph data structure and algorithms fr
 All the benchmarks are contained in a single executable, `dynograph`, which will be placed in the build directory.
 
 ```
-Usage: ./dynograph alg_name input_path num_batches window_size num_trials
+Usage: ./dynograph sort_mode alg_name input_path num_batches window_size num_trials
 ```
 
 * **alg_name**: Algorithm to run between inserted batches.
@@ -50,6 +50,12 @@ Usage: ./dynograph alg_name input_path num_batches window_size num_trials
   - `simple_communities_updating` Streaming Simple Community Detection (experimental)
   - `kcore` K-core detection
   - `pagerank` PageRank
+
+* **sort_mode**: How to sort edge batches before inserting into the graph.
+
+    * **unsorted**: Do not sort edge batches before insertion. This is the default that should be used for benchmarking.
+    * **presort**: Sort and deduplicate edge batches before insertion. Helps performance when there are a lot of duplicate edges. 
+    * **snapshot**: Clear and reload the graph from scratch before each batch, ensuring an unfragmented in-memory layout at the cost of slowdown.
 
 * **input_path**: Path to graph input file.
 
