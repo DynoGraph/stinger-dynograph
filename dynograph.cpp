@@ -131,7 +131,7 @@ struct StingerGraph
         static int64_t get_weight(const edge &u) { return u.weight; }
         static int64_t get_time(const edge &u) { return u.timestamp; }
         static int64_t get_result(const edge& u) { return u.result; }
-        static int64_t set_result(edge &u, int64_t v) { u.result = v; }
+        static void set_result(edge &u, int64_t v) { u.result = v; }
     };
 
     void
