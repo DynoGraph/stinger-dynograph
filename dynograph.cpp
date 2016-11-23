@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <sstream>
 #include <stdint.h>
+#include <cmath>
 
 #include <hooks.h>
 #include <dynograph_util.hh>
@@ -306,6 +307,7 @@ private:
     vector<StingerAlgorithm> algs;
     vector<stinger_edge_update> recentInsertions;
     vector<stinger_edge_update> recentDeletions;
+    int64_t max_active_vertex;
 
     // Helper functions to split strings
     // http://stackoverflow.com/a/236803/1877086
@@ -324,7 +326,7 @@ private:
 
 public:
 
-    StingerServer(uint64_t nv, std::string alg_names) : graph(nv)
+    StingerServer(uint64_t nv, std::string alg_names) : graph(nv), max_active_vertex(0)
     {
         graph.printSize();
 
@@ -335,6 +337,8 @@ public:
             algs.emplace_back(graph.S, algName);
             algs.back().onInit();
         }
+
+        onGraphChange();
     }
 
     void
@@ -389,28 +393,52 @@ public:
     }
 
     void
-    updateVertexCount()
+    onGraphChange()
     {
         // Count the number of active vertices
         // Lots of algs need this, so we'll do it in the server to save time
-        int64_t max_active_vertex = stinger_max_active_vertex(graph.S);
+        max_active_vertex = stinger_max_active_vertex(graph.S);
         for (auto &alg : algs)
         {
             alg.observeVertexCount(max_active_vertex);
         }
+        recordGraphStats();
+    }
+
+    void
+    recordGraphStats()
+    {
+        int64_t nv = max_active_vertex + 1;
+        stinger_fragmentation_t stats;
+        stinger_fragmentation (graph.S, nv, &stats);
+        int64_t num_active_vertices = stinger_num_active_vertices(graph.S);
+        DegreeStats d = compute_degree_distribution(graph);
+
+        Hooks &hooks = Hooks::getInstance();
+        hooks.set_stat("num_vertices", nv);
+        hooks.set_stat("num_active_vertices", num_active_vertices);
+        hooks.set_stat("num_edges", stats.num_edges);
+        hooks.set_stat("num_empty_edges", stats.num_empty_edges);
+        hooks.set_stat("num_fragmented_blocks", stats.num_fragmented_blocks);
+        hooks.set_stat("edge_blocks_in_use", stats.edge_blocks_in_use);
+        hooks.set_stat("num_empty_blocks", stats.num_empty_blocks);
+        hooks.set_stat("degree_mean", d.both.mean);
+        hooks.set_stat("degree_max", d.both.max);
+        hooks.set_stat("degree_variance", d.both.variance);
+        hooks.set_stat("degree_skew", d.both.skew);
     }
 
     void
     insert(DynoGraph::Batch & b)
     {
         graph.insert(b);
-        updateVertexCount();
+        onGraphChange();
     }
 
     void
     deleteOlderThan(int64_t threshold) {
         graph.deleteOlderThan(threshold);
-        updateVertexCount();
+        onGraphChange();
     }
 
     void
@@ -439,18 +467,103 @@ public:
         }
     }
 
-    void recordStats()
+    struct DistributionSummary
     {
-        int64_t nv = stinger_max_active_vertex(graph.S) + 1;
-        stinger_fragmentation_t stats;
-        stinger_fragmentation (graph.S, nv, &stats);
-        Hooks &hooks = Hooks::getInstance();
-        hooks.set_attr("num_vertices", nv);
-        hooks.set_attr("num_edges", stats.num_edges);
-        hooks.set_attr("num_empty_edges", stats.num_empty_edges);
-        hooks.set_attr("num_fragmented_blocks", stats.num_fragmented_blocks);
-        hooks.set_attr("edge_blocks_in_use", stats.edge_blocks_in_use);
-        hooks.set_attr("num_empty_blocks", stats.num_empty_blocks);
+        double mean;
+        double variance;
+        int64_t max;
+        double skew;
+    };
+
+    struct DegreeStats
+    {
+        DistributionSummary both, in, out;
+    };
+
+    /**
+     * Computes the mean, variance, max, and skew of the (in/out)degree of all vertices in the graph
+     *
+     * @return
+     */
+    //template<std::function<int64_t(int64_t)> get>
+    template <typename getter>
+    DistributionSummary
+    summarize(int64_t n, getter get)
+    {
+        DistributionSummary d = {};
+
+        // First pass: compute mean and max
+        int64_t max = 0;
+        int64_t mean_sum = 0;
+        OMP("omp parallel for reduction(max : max), reduction(+ : mean_sum)")
+        for (int64_t v = 0; v < n; ++v)
+        {
+            int64_t degree = get(v);
+            mean_sum += degree;
+            if (degree > max) { max = degree; }
+        }
+        d.mean = static_cast<double>(mean_sum) / n;
+        d.max = max;
+
+        // Second pass: compute second and third central moments about the mean (for variance and skewness)
+        double x2_sum = 0;
+        double x3_sum = 0;
+        OMP("omp parallel for reduction(+ : x2_sum, x3_sum)")
+        for (int64_t v = 0; v < n; ++v)
+        {
+            int64_t degree = get(v);
+            x2_sum += pow(d.mean - degree, 2);
+            x3_sum += pow(d.mean - degree, 3);
+        }
+        d.variance = x2_sum / n;
+        d.skew = x3_sum / pow(d.variance, 1.5);
+
+        return d;
+    }
+
+    DegreeStats
+    compute_degree_distribution(StingerGraph& g)
+    {
+        int64_t n = max_active_vertex + 1;
+        DegreeStats stats;
+        const stinger_t *S = g.S;
+
+        stats.both = summarize(n, [S](int64_t i) { return stinger_degree_get(S, i); });
+        stats.in   = summarize(n, [S](int64_t i) { return stinger_indegree_get(S, i); });
+        stats.out  = summarize(n, [S](int64_t i) { return stinger_outdegree_get(S, i); });
+        return stats;
+    }
+
+    DegreeStats
+    compute_degree_distribution(DynoGraph::Batch& b)
+    {
+        // Calculate the in/out degree of each vertex in the batch
+        int64_t max_src = std::max_element(b.begin(), b.end(),
+            [](const DynoGraph::Edge& a, const DynoGraph::Edge& b) { return a.src < b.src; }
+        )->src;
+        int64_t max_dst = std::max_element(b.begin(), b.end(),
+            [](const DynoGraph::Edge& a, const DynoGraph::Edge& b) { return a.dst < b.dst; }
+        )->dst;
+        int64_t n = std::max(max_src, max_dst) + 1;
+        vector<int64_t> degree(n);
+        vector<int64_t> in_degree(n);
+        vector<int64_t> out_degree(n);
+        OMP("omp parallel for")
+        for (auto e = b.begin(); e < b.end(); ++e)
+        {
+            stinger_int64_fetch_add(&degree[e->src], 1);
+            stinger_int64_fetch_add(&degree[e->dst], 1);
+            stinger_int64_fetch_add(&out_degree[e->src], 1);
+            stinger_int64_fetch_add(&in_degree[e->dst], 1);
+        }
+
+        // Summarize
+        DegreeStats stats;
+        stats.both = summarize(n, [&degree]    (int64_t i) { return degree[i]; });
+        stats.in   = summarize(n, [&in_degree] (int64_t i) { return in_degree[i]; });
+        stats.out  = summarize(n, [&out_degree](int64_t i) { return out_degree[i]; });
+
+        return stats;
     }
 };
 
@@ -488,14 +601,19 @@ int main(int argc, char **argv)
                 server.deleteOlderThan(threshold);
             }
 
+            StingerServer::DegreeStats stats = server.compute_degree_distribution(*batch);
+            hooks.set_stat("batch_degree_mean", stats.both.mean);
+            hooks.set_stat("batch_degree_max", stats.both.max);
+            hooks.set_stat("batch_degree_variance", stats.both.variance);
+            hooks.set_stat("batch_degree_skew", stats.both.skew);
+            hooks.set_stat("batch_num_vertices", batch->num_vertices_affected());
+
             cerr << msg << "Inserting batch " << i << "\n";
             server.insert(*batch);
 
             //TODO re-enable filtering at some point cerr << msg << "Filtering on >= " << threshold << "\n";
             cerr << msg << "Running algorithms (post-processing step)\n";
             server.updateAlgorithmsAfterBatch();
-
-            server.recordStats();
 
             // Clear out the graph between batches in snapshot mode
             if (args.sort_mode == DynoGraph::Args::SNAPSHOT)
