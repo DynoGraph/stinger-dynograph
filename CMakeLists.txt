@@ -21,10 +21,20 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 add_subdirectory(lib)
 
-add_executable(dynograph dynograph.cpp)
+add_executable(dynograph
+  main.cpp
+  stinger_server.cpp
+  stinger_algorithm.cpp
+  stinger_graph.cpp
+)
 target_include_directories(dynograph PRIVATE
   ${CMAKE_BINARY_DIR}/include # STINGER publishes headers to build directory
   lib/hooks
   lib/dynograph_util
 )
-target_link_libraries(dynograph stinger_core stinger_alg dynograph_util hooks)
+target_link_libraries(dynograph
+  stinger_core
+  stinger_alg
+  dynograph_util
+  hooks
+)
