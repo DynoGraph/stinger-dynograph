@@ -30,6 +30,7 @@ extern "C" {
 #include <stinger_alg/dynamic_simple_communities.h>
 #include <stinger_alg/dynamic_simple_communities_updating.h>
 #include <stinger_alg/dynamic_streaming_connected_components.h>
+#include <stinger_net/stinger_alg.h>
 
 using std::cerr;
 using std::shared_ptr;
@@ -105,43 +106,16 @@ StingerAlgorithm::observeVertexCount(int64_t nv)
     data.max_active_vertex = nv;
 }
 
-// Returns a list of the highest N vertices in the graph
-vector<int64_t>
-StingerAlgorithm::find_high_degree_vertices(int64_t num)
-{
-    int64_t n = data.max_active_vertex+1;
-    typedef std::pair<int64_t, int64_t> vertex_degree;
-    vector<vertex_degree> degrees(n);
-    OMP("parallel for")
-    for (int i = 0; i < n; ++i) {
-        degrees[i] = std::make_pair(i, stinger_outdegree_get(data.stinger, i));
-    }
-
-    // order by degree descending, vertex_id ascending
-    std::sort(degrees.begin(), degrees.end(),
-        [](const vertex_degree &a, const vertex_degree &b)
-        {
-            if (a.second != b.second) { return a.second > b.second; }
-            return a.first < b.first;
-        }
-    );
-
-    degrees.erase(degrees.begin() + num, degrees.end());
-    vector<int64_t> ids(degrees.size());
-    std::transform(degrees.begin(), degrees.end(), ids.begin(),
-        [](const vertex_degree &d) { return d.first; });
-    return ids;
-}
-
 void
 StingerAlgorithm::pickSources()
 {
-    if (auto b = std::dynamic_pointer_cast<BreadthFirstSearch>(impl))
-    {
-        int64_t source = find_high_degree_vertices(1)[0];
+    stinger_t *S = data.stinger;
+    auto get_degree = [S](int64_t i){ return stinger_outdegree_get(S, i); };
+    if (auto b = std::dynamic_pointer_cast<BreadthFirstSearch>(impl)) {
+        int64_t source = DynoGraph::find_high_degree_vertices(1, data.max_active_vertex, get_degree)[0];
         b->setSource(source);
     } else if (auto b = std::dynamic_pointer_cast<BetweennessCentrality>(impl)) {
-        auto samples = find_high_degree_vertices(128);
+        auto samples = DynoGraph::find_high_degree_vertices(128, data.max_active_vertex, get_degree);
         b->setSources(samples);
     }
 }
