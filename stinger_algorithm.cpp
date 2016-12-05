@@ -112,10 +112,10 @@ StingerAlgorithm::pickSources()
     stinger_t *S = data.stinger;
     auto get_degree = [S](int64_t i){ return stinger_outdegree_get(S, i); };
     if (auto b = std::dynamic_pointer_cast<BreadthFirstSearch>(impl)) {
-        int64_t source = DynoGraph::find_high_degree_vertices(1, data.max_active_vertex, get_degree)[0];
+        int64_t source = DynoGraph::find_high_degree_vertices(1L, data.max_active_vertex, get_degree)[0];
         b->setSource(source);
     } else if (auto b = std::dynamic_pointer_cast<BetweennessCentrality>(impl)) {
-        auto samples = DynoGraph::find_high_degree_vertices(128, data.max_active_vertex, get_degree);
+        auto samples = DynoGraph::find_high_degree_vertices(128L, data.max_active_vertex, get_degree);
         b->setSources(samples);
     }
 }
