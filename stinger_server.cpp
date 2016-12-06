@@ -211,8 +211,8 @@ summarize(int64_t n, getter get)
     for (int64_t v = 0; v < n; ++v)
     {
         int64_t degree = get(v);
-        x2_sum += pow(d.mean - degree, 2);
-        x3_sum += pow(d.mean - degree, 3);
+        x2_sum += pow(degree - d.mean, 2);
+        x3_sum += pow(degree - d.mean, 3);
     }
     d.variance = x2_sum / n;
     d.skew = x3_sum / pow(d.variance, 1.5);
