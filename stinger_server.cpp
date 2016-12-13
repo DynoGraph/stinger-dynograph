@@ -9,7 +9,7 @@
 #include <cmath>
 
 #include <hooks.h>
-#include <dynograph_util.hh>
+#include <dynograph_util.h>
 #include <stinger_core/stinger_atomics.h>
 #include "stinger_server.h"
 
@@ -21,32 +21,19 @@ using std::stringstream;
 using std::vector;
 
 using namespace gt::stinger;
-using DynoGraph::msg;
 
-// Helper functions to split strings
-// http://stackoverflow.com/a/236803/1877086
-void split(const string &s, char delim, vector<string> &elems) {
-    stringstream ss(s);
-    string item;
-    while (getline(ss, item, delim)) {
-        elems.push_back(item);
-    }
-}
-vector<string> split(const string &s, char delim) {
-    vector<string> elems;
-    split(s, delim, elems);
-    return elems;
-}
-
-StingerServer::StingerServer(int64_t nv, std::string alg_names)
-: graph(nv), max_active_vertex(0)
+StingerServer::StingerServer(const DynoGraph::Args& args, int64_t max_nv)
+: DynoGraph::DynamicGraph(args, max_nv)
+, graph(max_nv)
+, max_active_vertex(0)
 {
     graph.printSize();
 
+    algs.reserve(args.alg_names.size());
     // Register algorithms to run
-    for (string algName : split(alg_names, ' '))
+    for (string algName : args.alg_names)
     {
-        cerr << msg << "Initializing " << algName << "...\n";
+        DynoGraph::Logger::get_instance() << "Initializing " << algName << "...\n";
         algs.emplace_back(graph.S, algName);
         algs.back().onInit();
     }
@@ -54,17 +41,23 @@ StingerServer::StingerServer(int64_t nv, std::string alg_names)
     onGraphChange();
 }
 
-void
-StingerServer::prepare(DynoGraph::Batch& batch, int64_t threshold)
+vector<string>
+StingerServer::get_supported_algs()
 {
+    return StingerAlgorithm::supported_algs;
+}
+
+void
+StingerServer::before_batch(const DynoGraph::Batch& batch, int64_t threshold)
+{
+    assert(batch.is_directed());
     // Store the insertions in the format that the algorithms expect
-    assert(batch.dataset.isDirected()); // Not sure what algs expect for undirected batch
-    int64_t num_insertions = batch.end() - batch.begin();
+    int64_t num_insertions = batch.size();
     recentInsertions.resize(num_insertions);
     OMP("omp parallel for")
     for (int i = 0; i < num_insertions; ++i)
     {
-        DynoGraph::Edge &e = *(batch.begin() + i);
+        const DynoGraph::Edge &e = *(batch.begin() + i);
         stinger_edge_update &u = recentInsertions[i];
         u.source = e.src;
         u.destination = e.dst;
@@ -78,17 +71,17 @@ StingerServer::prepare(DynoGraph::Batch& batch, int64_t threshold)
     vector<vector<stinger_edge_update>> myDeletions(omp_get_max_threads());
     // Identical to the deletion loop, but we won't delete anything yet
     STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_BEGIN(graph.S)
-                            {
-                                if (STINGER_EDGE_TIME_RECENT < threshold) {
-                                    // Record the deletion
-                                    stinger_edge_update u;
-                                    u.source = STINGER_EDGE_SOURCE;
-                                    u.destination = STINGER_EDGE_DEST;
-                                    u.weight = STINGER_EDGE_WEIGHT;
-                                    u.time = STINGER_EDGE_TIME_RECENT;
-                                    myDeletions[omp_get_thread_num()].push_back(u);
-                                }
-                            }
+    {
+        if (STINGER_EDGE_TIME_RECENT < threshold) {
+            // Record the deletion
+            stinger_edge_update u;
+            u.source = STINGER_EDGE_SOURCE;
+            u.destination = STINGER_EDGE_DEST;
+            u.weight = STINGER_EDGE_WEIGHT;
+            u.time = STINGER_EDGE_TIME_RECENT;
+            myDeletions[omp_get_thread_num()].push_back(u);
+        }
+    }
     STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_END();
 
     // Combine each thread's deletions into a single array
@@ -102,6 +95,7 @@ StingerServer::prepare(DynoGraph::Batch& batch, int64_t threshold)
     {
         alg.observeInsertions(recentInsertions);
         alg.observeDeletions(recentDeletions);
+        alg.onPre();
     }
 }
 
@@ -125,12 +119,13 @@ StingerServer::recordGraphStats()
     stinger_fragmentation_t stats;
     stinger_fragmentation (graph.S, nv, &stats);
     int64_t num_active_vertices = stinger_num_active_vertices(graph.S);
+    int64_t num_edges = stinger_edges_up_to(graph.S, nv);
     DegreeStats d = compute_degree_distribution(graph);
 
     Hooks &hooks = Hooks::getInstance();
     hooks.set_stat("num_vertices", nv);
     hooks.set_stat("num_active_vertices", num_active_vertices);
-    hooks.set_stat("num_edges", stats.num_edges);
+    hooks.set_stat("num_edges", num_edges);
     hooks.set_stat("num_empty_edges", stats.num_empty_edges);
     hooks.set_stat("num_fragmented_blocks", stats.num_fragmented_blocks);
     hooks.set_stat("edge_blocks_in_use", stats.edge_blocks_in_use);
@@ -142,44 +137,48 @@ StingerServer::recordGraphStats()
 }
 
 void
-StingerServer::insert(DynoGraph::Batch & b)
+StingerServer::insert_batch(const DynoGraph::Batch & b)
 {
     graph.insert(b);
     onGraphChange();
 }
 
 void
-StingerServer::deleteOlderThan(int64_t threshold) {
+StingerServer::delete_edges_older_than(int64_t threshold) {
     graph.deleteOlderThan(threshold);
     onGraphChange();
 }
 
 void
-StingerServer::updateAlgorithmsBeforeBatch()
+StingerServer::update_alg(const string& name, const std::vector<int64_t> &sources)
 {
-    Hooks &hooks = Hooks::getInstance();
-    for (auto &alg : algs)
-    {
-        hooks.region_begin(alg.name() + "_pre");
-        alg.onPre();
-        hooks.region_end();
+    auto alg = std::find_if(algs.begin(), algs.end(),
+        [name](const StingerAlgorithm &alg) { return alg.name == name; });
+    if (alg == algs.end()) {
+        DynoGraph::Logger::get_instance() << "Algorithm " << name << " was never initialized\n";
+        exit(-1);
     }
+    alg->setSources(sources);
+    alg->onPost();
 }
 
-void
-StingerServer::updateAlgorithmsAfterBatch()
+int64_t
+StingerServer::get_out_degree(int64_t vertex_id) const
 {
-    Hooks &hooks = Hooks::getInstance();
-    for (auto &alg : algs)
-    {
-        // HACK need to pick source vertices outside of timed section
-        alg.pickSources();
-        hooks.region_begin(alg.name() + "_post");
-        alg.onPost();
-        hooks.region_end();
-    }
+    return stinger_outdegree_get(graph.S, vertex_id);
 }
 
+int64_t
+StingerServer::get_num_vertices() const
+{
+    return max_active_vertex;
+}
+
+int64_t
+StingerServer::get_num_edges() const
+{
+    return stinger_edges_up_to(graph.S, max_active_vertex+1);
+}
 
 /**
  * Computes the mean, variance, max, and skew of the (in/out)degree of all vertices in the graph

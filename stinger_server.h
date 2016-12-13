@@ -5,13 +5,12 @@
 #include <string>
 #include <stdint.h>
 
-#include <hooks.h>
-#include <dynograph_util.hh>
+#include <dynograph_util.h>
 
 #include "stinger_graph.h"
 #include "stinger_algorithm.h"
 
-class StingerServer
+class StingerServer : public DynoGraph::DynamicGraph
 {
 private:
     StingerGraph graph;
@@ -24,14 +23,17 @@ private:
     void recordGraphStats();
 public:
 
-    StingerServer(int64_t nv, std::string alg_names);
+    StingerServer(const DynoGraph::Args& args, int64_t max_nv);
 
-    void prepare(DynoGraph::Batch& batch, int64_t threshold);
-    void insert(DynoGraph::Batch & b);
-    void deleteOlderThan(int64_t threshold);
+    static std::vector<std::string> get_supported_algs();
+    void before_batch(const DynoGraph::Batch& batch, const int64_t threshold);
+    void insert_batch(const DynoGraph::Batch & b);
+    void delete_edges_older_than(int64_t threshold);
+    void update_alg(const std::string &name, const std::vector<int64_t> &sources);
 
-    void updateAlgorithmsBeforeBatch();
-    void updateAlgorithmsAfterBatch();
+    int64_t get_out_degree(int64_t vertex_id) const;
+    int64_t get_num_vertices() const;
+    int64_t get_num_edges() const ;
 
     struct DistributionSummary
     {

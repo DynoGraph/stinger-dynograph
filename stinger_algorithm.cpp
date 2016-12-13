@@ -9,7 +9,7 @@
 #include <cmath>
 #include <algorithm>
 
-#include <dynograph_util.hh>
+#include <dynograph_util.h>
 
 extern "C" {
 #include <stinger_core/stinger.h>
@@ -40,9 +40,21 @@ using std::stringstream;
 using std::vector;
 
 using namespace gt::stinger;
-using DynoGraph::msg;
 
 // Implementation of StingerAlgorithm
+
+const vector<string>
+StingerAlgorithm::supported_algs = {
+    "bc",
+    "bfs",
+    "cc",
+    "clustering",
+    "simple_communities",
+    "simple_communities_updating",
+    "streaming_cc",
+    "kcore",
+    "pagerank"
+};
 
 shared_ptr<IDynamicGraphAlgorithm> createImplementation(string name)
 {
@@ -71,7 +83,9 @@ shared_ptr<IDynamicGraphAlgorithm> createImplementation(string name)
 }
 
 StingerAlgorithm::StingerAlgorithm(stinger_t * S, string name) :
-// Create the implementation
+        // Save the name
+        name(name),
+        // Create the implementation
         impl(createImplementation(name)),
         // Zero-initialize the server data
         data{},
@@ -107,16 +121,12 @@ StingerAlgorithm::observeVertexCount(int64_t nv)
 }
 
 void
-StingerAlgorithm::pickSources()
+StingerAlgorithm::setSources(const vector<int64_t> &sources)
 {
-    stinger_t *S = data.stinger;
-    auto get_degree = [S](int64_t i){ return stinger_outdegree_get(S, i); };
     if (auto b = std::dynamic_pointer_cast<BreadthFirstSearch>(impl)) {
-        int64_t source = DynoGraph::find_high_degree_vertices(1L, data.max_active_vertex, get_degree)[0];
-        b->setSource(source);
+        b->setSource(sources[0]);
     } else if (auto b = std::dynamic_pointer_cast<BetweennessCentrality>(impl)) {
-        auto samples = DynoGraph::find_high_degree_vertices(128L, data.max_active_vertex, get_degree);
-        b->setSources(samples);
+        b->setSources(sources);
     }
 }
 
@@ -126,5 +136,3 @@ void
 StingerAlgorithm::onPre(){ impl->onPre(&data); }
 void
 StingerAlgorithm::onPost(){ impl->onPost(&data); }
-string
-StingerAlgorithm::name() const { return string(data.alg_name); }

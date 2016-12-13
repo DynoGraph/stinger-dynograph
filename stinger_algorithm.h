@@ -15,16 +15,22 @@ protected:
     stinger_registered_alg data;
     std::vector<uint8_t> alg_data;
 public:
+    const std::string name;
     StingerAlgorithm(stinger_t * S, std::string name);
+
+    // After onInit is called, there will be a pointer in stinger_registered_alg to alg_data
+    // We can't allow this class to be copied or that pointer will be invalidated
+    // But we still need move so we can use emplace_back
+    StingerAlgorithm(const StingerAlgorithm& other) = delete;
+    StingerAlgorithm(StingerAlgorithm&& other) = default;
 
     void observeInsertions(std::vector<stinger_edge_update> &recentInsertions);
     void observeDeletions(std::vector<stinger_edge_update> &recentDeletions);
     void observeVertexCount(int64_t nv);
-    void pickSources();
-    std::vector<int64_t> find_high_degree_vertices(int64_t num);
+    void setSources(const std::vector<int64_t> &sources);
 
     void onInit();
     void onPre();
     void onPost();
-    std::string name() const;
+    static const std::vector<std::string> supported_algs;
 };

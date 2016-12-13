@@ -1,3 +1,2 @@
-add_subdirectory(hooks)
 add_subdirectory(dynograph_util)
 add_subdirectory(stinger)

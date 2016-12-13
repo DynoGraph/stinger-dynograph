@@ -2,6 +2,7 @@
 #include <vector>
 #include <iostream>
 #include <hooks.h>
+#include <iomanip>
 
 extern "C" {
 #include <stinger_core/stinger.h>
@@ -13,7 +14,6 @@ extern "C" {
 using std::cerr;
 
 using namespace gt::stinger;
-using DynoGraph::msg;
 
 // Figure out how many edge blocks we can allocate to fill STINGER_MAX_MEMSIZE
 // Assumes we need just enough room for nv vertices and puts the rest into edge blocks
@@ -86,39 +86,35 @@ struct EdgeAdapter : public DynoGraph::Edge
 };
 
 void
-StingerGraph::insert(DynoGraph::Batch& batch)
+StingerGraph::insert(const DynoGraph::Batch& batch)
 {
-    const size_t batch_size = std::distance(batch.begin(), batch.end());
-    std::vector<EdgeAdapter> updates(batch_size);
+    std::vector<EdgeAdapter> updates(batch.size());
     OMP("omp parallel for")
     for (size_t i = 0; i < updates.size(); ++i)
     {
-        DynoGraph::Edge &e = *(batch.begin() + i);
+        const DynoGraph::Edge &e = *(batch.begin() + i);
         updates[i] = EdgeAdapter(e);
     }
     Hooks &hooks = Hooks::getInstance();
-    hooks.region_begin("insertions");
     hooks.traverse_edges(updates.size());
-    if (batch.dataset.isDirected())
+    if (batch.is_directed())
     { stinger_batch_incr_edges<EdgeAdapter>(S, updates.begin(), updates.end()); }
     else
     { stinger_batch_incr_edge_pairs<EdgeAdapter>(S, updates.begin(), updates.end()); }
-    hooks.region_end();
 }
 
 #else
 
 void
-StingerGraph::insert(DynoGraph::Batch& batch)
+StingerGraph::insert(const DynoGraph::Batch& batch)
 {
     // Insert the edges in parallel
     const int64_t type = 0;
-    const bool directed = batch.dataset.isDirected();
-    Hooks::getInstance().region_begin("insertions");
+    const bool directed = batch.is_directed();
 
     int64_t chunksize = 8192;
     OMP("omp parallel for schedule(dynamic, chunksize)")
-    for (auto e = batch.begin(); e < batch.end(); ++e)
+    for (auto e = batch.cbegin(); e < batch.cend(); ++e)
     {
         if (directed)
         {
@@ -128,8 +124,7 @@ StingerGraph::insert(DynoGraph::Batch& batch)
         }
         Hooks::getInstance().traverse_edges(1);
     }
-    Hooks::getInstance().region_end();
-}
+}`
 #endif
 
 // Deletes edges that haven't been modified recently
@@ -137,7 +132,6 @@ void
 StingerGraph::deleteOlderThan(int64_t threshold)
 {
     Hooks &hooks = Hooks::getInstance();
-    hooks.region_begin("deletions");
     STINGER_RAW_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S)
     {
         hooks.traverse_edges(1);
@@ -153,18 +147,16 @@ StingerGraph::deleteOlderThan(int64_t threshold)
         }
     }
     STINGER_RAW_FORALL_EDGES_OF_ALL_TYPES_END();
-    hooks.region_end();
 }
 
 void
 StingerGraph::printSize()
 {
     size_t stinger_bytes = calculate_stinger_size(S->max_nv, S->max_neblocks, S->max_netypes, S->max_nvtypes).size;
-    cerr << DynoGraph::msg <<
-         "Initialized stinger with storage for "
+    DynoGraph::Logger &logger = DynoGraph::Logger::get_instance();
+    logger << "Initialized stinger with storage for "
          << S->max_nv << " vertices and "
          << S->max_neblocks * STINGER_EDGEBLOCKSIZE << " edges.\n";
-    cerr.precision(4);
-    cerr << DynoGraph::msg <<
-         "Stinger is consuming " << (double)stinger_bytes / (1024*1024*1024) << "GB of RAM\n";
+    logger << std::setprecision(4);
+    logger << "Stinger is consuming " << (double)stinger_bytes / (1024*1024*1024) << "GB of RAM\n";
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <dynograph_util.hh>
+#include <dynograph_util.h>
 
 extern "C" {
 #include <stinger_core/stinger.h>
@@ -17,7 +17,7 @@ struct StingerGraph
     StingerGraph(const StingerGraph& other)            = delete;
     StingerGraph& operator=(const StingerGraph& other) = delete;
 
-    void insert(DynoGraph::Batch& batch);
+    void insert(const DynoGraph::Batch& batch);
     void deleteOlderThan(int64_t threshold);
     void printSize();
 };
