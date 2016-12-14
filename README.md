@@ -1,5 +1,7 @@
 # DynoGraph
 
+[![Build Status (master)](https://travis-ci.org/DynoGraph/stinger-dynograph.png?branch=master)](https://travis-ci.org/DynoGraph/stinger-dynograph)
+
 > (c) 2016 Georgia Tech Research Institute.
 > Released under GPL v3.0.  See LICENSE for full details.
 
@@ -54,7 +56,7 @@ Usage: ./dynograph sort_mode alg_name input_path num_batches window_size num_tri
 * **sort_mode**: How to sort edge batches before inserting into the graph.
 
     * **unsorted**: Do not sort edge batches before insertion. This is the default that should be used for benchmarking.
-    * **presort**: Sort and deduplicate edge batches before insertion. Helps performance when there are a lot of duplicate edges. 
+    * **presort**: Sort and deduplicate edge batches before insertion. Helps performance when there are a lot of duplicate edges.
     * **snapshot**: Clear and reload the graph from scratch before each batch, ensuring an unfragmented in-memory layout at the cost of slowdown.
 
 * **input_path**: Path to graph input file.
