@@ -22,9 +22,9 @@ using std::vector;
 
 using namespace gt::stinger;
 
-StingerServer::StingerServer(const DynoGraph::Args& args, int64_t max_nv)
-: DynoGraph::DynamicGraph(args, max_nv)
-, graph(max_nv)
+StingerServer::StingerServer(const DynoGraph::Args& args, int64_t max_vertex_id)
+: DynoGraph::DynamicGraph(args, max_vertex_id)
+, graph(max_vertex_id + 1)
 , max_active_vertex(0)
 {
     graph.printSize();
