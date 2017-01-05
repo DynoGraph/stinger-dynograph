@@ -13,7 +13,8 @@ before_script:
   - cd build
   - $HOME/cmake/bin/cmake ..
 script:
-  - make dynograph
+  - make -j2
+  - make test
 addons:
   apt:
     sources:
