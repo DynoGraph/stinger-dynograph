@@ -2,16 +2,12 @@ sudo: false
 language: cpp
 compiler:
   - gcc
-before_install:
-  - wget --no-check-certificate http://www.cmake.org/files/v3.3/cmake-3.3.0-rc3-Linux-x86_64.sh
-  - mkdir -p $HOME/cmake
-  - sh cmake-3.3.0-rc3-Linux-x86_64.sh --skip-license --prefix=$HOME/cmake
 install:
   - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
 before_script:
   - mkdir build
   - cd build
-  - $HOME/cmake/bin/cmake ..
+  - cmake ..
 script:
   - make -j2
   - CTEST_OUTPUT_ON_FAILURE=1 make test
@@ -19,8 +15,9 @@ addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
+      - george-edison55-precise-backports
     packages:
+      - cmake
+      - cmake-data
       - gcc-4.8
       - g++-4.8
-      - protobuf-compiler
-      - libprotobuf-dev
