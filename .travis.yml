@@ -14,7 +14,7 @@ before_script:
   - $HOME/cmake/bin/cmake ..
 script:
   - make -j2
-  - make test
+  - CTEST_OUTPUT_ON_FAILURE=1 make test
 addons:
   apt:
     sources:
@@ -22,3 +22,5 @@ addons:
     packages:
       - gcc-4.8
       - g++-4.8
+      - protobuf-compiler
+      - libprotobuf-dev
