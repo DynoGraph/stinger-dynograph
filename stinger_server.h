@@ -49,7 +49,9 @@ public:
     };
 
     DegreeStats
-    compute_degree_distribution(DynoGraph::Batch& b);
+    compute_degree_distribution(const DynoGraph::Batch& b);
     DegreeStats
     compute_degree_distribution(StingerGraph& g);
+    DegreeStats
+    compute_degree_distribution(StingerGraph &g, const DynoGraph::Batch &b);
 };

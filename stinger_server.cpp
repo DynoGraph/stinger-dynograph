@@ -50,6 +50,19 @@ StingerServer::get_supported_algs()
 void
 StingerServer::before_batch(const DynoGraph::Batch& batch, int64_t threshold)
 {
+    // Compute degree distributions
+    Hooks &hooks = Hooks::getInstance();
+    DegreeStats batch_degree_dist = compute_degree_distribution(batch);
+    hooks.set_stat("batch_degree_mean", batch_degree_dist.both.mean);
+    hooks.set_stat("batch_degree_max", batch_degree_dist.both.max);
+    hooks.set_stat("batch_degree_variance", batch_degree_dist.both.variance);
+    hooks.set_stat("batch_degree_skew", batch_degree_dist.both.skew);
+    DegreeStats affected_graph_dist = compute_degree_distribution(graph, batch);
+    hooks.set_stat("affected_degree_mean", affected_graph_dist.both.mean);
+    hooks.set_stat("affected_degree_max", affected_graph_dist.both.max);
+    hooks.set_stat("affected_degree_variance", affected_graph_dist.both.variance);
+    hooks.set_stat("affected_degree_skew", affected_graph_dist.both.skew);
+
     assert(batch.is_directed());
     // Store the insertions in the format that the algorithms expect
     int64_t num_insertions = batch.size();
@@ -219,6 +232,7 @@ summarize(int64_t n, getter get)
     return d;
 }
 
+// Computes the degree distribution of the graph
 StingerServer::DegreeStats
 StingerServer::compute_degree_distribution(StingerGraph& g)
 {
@@ -232,8 +246,9 @@ StingerServer::compute_degree_distribution(StingerGraph& g)
     return stats;
 }
 
+// Computes the degree distribution of the batch (treating the edge list as a graph)
 StingerServer::DegreeStats
-StingerServer::compute_degree_distribution(DynoGraph::Batch& b)
+StingerServer::compute_degree_distribution(const DynoGraph::Batch& b)
 {
     // Calculate the in/out degree of each vertex in the batch
     int64_t max_src = std::max_element(b.begin(), b.end(),
@@ -261,5 +276,31 @@ StingerServer::compute_degree_distribution(DynoGraph::Batch& b)
     stats.in   = summarize(n, [&in_degree] (int64_t i) { return in_degree[i]; });
     stats.out  = summarize(n, [&out_degree](int64_t i) { return out_degree[i]; });
 
+    return stats;
+}
+
+// Computes the degree distribution of the vertices in the graph that will be updated by this batch
+StingerServer::DegreeStats
+StingerServer::compute_degree_distribution(StingerGraph& g, const DynoGraph::Batch& b)
+{
+    // Get a list of unique vertex ID's in the batch
+    vector<int64_t> batch_vertices(b.size() * 2);
+    std::transform(b.begin(), b.end(), batch_vertices.begin(),
+        [](const DynoGraph::Edge& e) { return e.src; });
+    std::transform(b.begin(), b.end(), batch_vertices.begin() + b.size(),
+        [](const DynoGraph::Edge& e) { return e.dst; });
+    vector<int64_t> unique_batch_vertices(max_active_vertex+1);
+    auto end = std::unique_copy(batch_vertices.begin(), batch_vertices.end(), unique_batch_vertices.begin());
+    unique_batch_vertices.erase(end, unique_batch_vertices.end());
+
+    // Compute degree distribution for only the vertices in the batch
+    DegreeStats stats;
+    const stinger_t *S = g.S;
+    int64_t n = unique_batch_vertices.size();
+    const vector<int64_t> &v = unique_batch_vertices;
+
+    stats.both = summarize(n, [S, v](int64_t i) { return stinger_degree_get(S, v[i]); });
+    stats.in   = summarize(n, [S, v](int64_t i) { return stinger_indegree_get(S, v[i]); });
+    stats.out  = summarize(n, [S, v](int64_t i) { return stinger_outdegree_get(S, v[i]); });
     return stats;
 }
