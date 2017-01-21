@@ -55,4 +55,4 @@ target_include_directories(stinger_dynograph_test PRIVATE ${GOOGLETEST_DIR} dyno
 target_link_libraries(stinger_dynograph_test dynograph_util gtest_main)
 
 enable_testing()
-add_test(stinger_dynograph_test stinger_dynograph_test)
+add_test(NAME stinger_dynograph_test COMMAND stinger_dynograph_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
