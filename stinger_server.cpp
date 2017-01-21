@@ -289,6 +289,7 @@ StingerServer::compute_degree_distribution(StingerGraph& g, const DynoGraph::Bat
         [](const DynoGraph::Edge& e) { return e.src; });
     std::transform(b.begin(), b.end(), batch_vertices.begin() + b.size(),
         [](const DynoGraph::Edge& e) { return e.dst; });
+    std::sort(batch_vertices.begin(), batch_vertices.end());
     vector<int64_t> unique_batch_vertices(max_active_vertex+1);
     auto end = std::unique_copy(batch_vertices.begin(), batch_vertices.end(), unique_batch_vertices.begin());
     unique_batch_vertices.erase(end, unique_batch_vertices.end());
