@@ -136,9 +136,7 @@ StingerServer::recordGraphStats()
     DegreeStats d = compute_degree_distribution(graph);
 
     Hooks &hooks = Hooks::getInstance();
-    hooks.set_stat("num_vertices", nv);
     hooks.set_stat("num_active_vertices", num_active_vertices);
-    hooks.set_stat("num_edges", num_edges);
     hooks.set_stat("num_empty_edges", stats.num_empty_edges);
     hooks.set_stat("num_fragmented_blocks", stats.num_fragmented_blocks);
     hooks.set_stat("edge_blocks_in_use", stats.edge_blocks_in_use);
