@@ -96,7 +96,7 @@ StingerGraph::insert(const DynoGraph::Batch& batch)
         updates[i] = EdgeAdapter(e);
     }
     Hooks &hooks = Hooks::getInstance();
-    hooks.traverse_edges(updates.size());
+    DYNOGRAPH_EDGE_COUNT_TRAVERSE_MULTIPLE_EDGES(updates.size());
     if (batch.is_directed())
     { stinger_batch_incr_edges<EdgeAdapter>(S, updates.begin(), updates.end()); }
     else
@@ -134,7 +134,7 @@ StingerGraph::deleteOlderThan(int64_t threshold)
     Hooks &hooks = Hooks::getInstance();
     STINGER_RAW_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S)
     {
-        hooks.traverse_edges(1);
+        DYNOGRAPH_EDGE_COUNT_TRAVERSE_EDGE();
         if (STINGER_EDGE_TIME_RECENT < threshold) {
             // Record the deletion
             stinger_edge_update u;
