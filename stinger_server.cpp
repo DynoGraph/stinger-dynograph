@@ -150,7 +150,15 @@ StingerServer::recordGraphStats()
 void
 StingerServer::insert_batch(const DynoGraph::Batch & b)
 {
-    graph.insert(b);
+    if (args.sort_mode == DynoGraph::Args::SORT_MODE::SNAPSHOT) {
+        graph.insert_using_set_initial_edges(b);
+    } else {
+#ifdef USE_STINGER_BATCH_INSERT
+        graph.insert_using_stinger_batch(b);
+#else
+        graph.insert_using_parallel_for(b);
+#endif
+    }
     onGraphChange();
 }
 
