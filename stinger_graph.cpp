@@ -11,6 +11,7 @@ extern "C" {
 }
 #include <stinger_net/stinger_alg.h>
 #include <stinger_core/stinger_batch_insert.h>
+#include <hooks/dynograph_edge_count.h>
 
 using std::cerr;
 
