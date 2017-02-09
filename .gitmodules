@@ -1,9 +1,6 @@
 [submodule "lib/dynograph_util"]
 	path = lib/dynograph_util
 	url = ../dynograph_util.git
-[submodule "lib/hooks"]
-	path = lib/hooks
-	url = ../hooks.git
 [submodule "lib/stinger"]
 	path = lib/stinger
 	url = ../stinger.git

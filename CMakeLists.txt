@@ -1,10 +1,16 @@
 cmake_minimum_required (VERSION 2.8.11)
-project (DYNOGRAPH)
+project (stinger-dynograph)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
+set(BUILD_SHARED_LIBS OFF)
 set(USE_STINGER_BATCH_INSERT TRUE CACHE BOOL "Use the new stinger_batch functions to do insertions.")
+set(ENABLE_DYNOGRAPH_EDGE_COUNT TRUE CACHE BOOL "Enable per-thread counters for number of edges traversed")
+
 if(${USE_STINGER_BATCH_INSERT})
   add_definitions(-DUSE_STINGER_BATCH_INSERT)
+endif()
+
+if(${ENABLE_DYNOGRAPH_EDGE_COUNT})
+  add_definitions(-DENABLE_DYNOGRAPH_EDGE_COUNT)
 endif()
 
 # Build with OpenMP
@@ -19,12 +25,40 @@ endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu9x")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
+# Inform dynograph_util that googletest already exists in stinger
+set(GOOGLETEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/stinger/external/googletest/include)
+
 add_subdirectory(lib)
 
-add_executable(dynograph dynograph.cpp)
-target_include_directories(dynograph PRIVATE
+include_directories(
   ${CMAKE_BINARY_DIR}/include # STINGER publishes headers to build directory
-  lib/hooks
   lib/dynograph_util
 )
-target_link_libraries(dynograph stinger_core stinger_alg dynograph_util hooks)
+
+link_libraries(
+  stinger_core
+  stinger_alg
+  dynograph_util
+  hooks
+)
+
+add_executable(dynograph
+  main.cpp
+  stinger_server.cpp
+  stinger_algorithm.cpp
+  stinger_graph.cpp
+)
+
+# Tests
+
+add_executable(stinger_dynograph_test
+  stinger_dynograph_test.cc
+  stinger_server.cpp
+  stinger_algorithm.cpp
+  stinger_graph.cpp
+)
+target_include_directories(stinger_dynograph_test PRIVATE ${GOOGLETEST_DIR} dynograph_util)
+target_link_libraries(stinger_dynograph_test dynograph_util gtest_main)
+
+enable_testing()
+add_test(NAME stinger_dynograph_test COMMAND stinger_dynograph_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
