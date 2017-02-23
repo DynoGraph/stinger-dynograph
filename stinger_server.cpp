@@ -199,6 +199,29 @@ StingerServer::get_num_edges() const
     return stinger_edges_up_to(graph.S, max_active_vertex+1);
 }
 
+std::vector<int64_t>
+StingerServer::get_high_degree_vertices(int64_t n) const
+{
+    using DynoGraph::vertex_degree;
+    int64_t nv = this->get_num_vertices();
+    assert(n < nv);
+
+    std::vector<vertex_degree> degrees(nv);
+    #pragma omp parallel for
+    for (int64_t i = 0; i < nv; ++i) {
+        int64_t degree = stinger_outdegree_get(graph.S, i);
+        degrees[i] = vertex_degree(i, degree);
+    }
+    // order by degree descending, vertex_id ascending
+    std::sort(degrees.begin(), degrees.end());
+
+    degrees.erase(degrees.begin(), degrees.end() - n);
+    std::vector<int64_t> ids(degrees.size());
+    std::transform(degrees.begin(), degrees.end(), ids.begin(),
+        [](const vertex_degree &d) { return d.vertex_id; });
+    return ids;
+}
+
 /**
  * Computes the mean, variance, max, and skew of the (in/out)degree of all vertices in the graph
  */

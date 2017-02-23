@@ -34,6 +34,7 @@ public:
     int64_t get_out_degree(int64_t vertex_id) const;
     int64_t get_num_vertices() const;
     int64_t get_num_edges() const ;
+    std::vector<int64_t> get_high_degree_vertices(int64_t n) const;
 
     struct DistributionSummary
     {
