@@ -169,16 +169,23 @@ StingerServer::delete_edges_older_than(int64_t threshold) {
 }
 
 void
-StingerServer::update_alg(const string& name, const std::vector<int64_t> &sources)
+StingerServer::update_alg(const string& name, const std::vector<int64_t> &sources, std::vector<int64_t> &data)
 {
+    // Look up pointer to implementation
     auto alg = std::find_if(algs.begin(), algs.end(),
         [name](const StingerAlgorithm &alg) { return alg.name == name; });
     if (alg == algs.end()) {
         DynoGraph::Logger::get_instance() << "Algorithm " << name << " was never initialized\n";
         exit(-1);
     }
+    // Pass source vertices (for algs that use it)
     alg->setSources(sources);
+    // Set results from previous run (for incremental algs)
+    alg->setData(data);
+    // Run the algorithm
     alg->onPost();
+    // Copy result data to buffer
+    alg->getData(data);
 }
 
 int64_t

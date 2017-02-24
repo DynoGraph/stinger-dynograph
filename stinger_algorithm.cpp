@@ -88,36 +88,36 @@ StingerAlgorithm::StingerAlgorithm(stinger_t * S, string name) :
         // Create the implementation
         impl(createImplementation(name)),
         // Zero-initialize the server data
-        data{},
+        server_data{},
         // Allocate data for the algorithm
         alg_data(impl->getDataPerVertex() * S->max_nv)
 {
     // Initialize the "server" data about this algorithm
-    strcpy(data.alg_name, impl->getName().c_str());
-    data.stinger = S;
-    data.alg_data_per_vertex = impl->getDataPerVertex();
-    data.alg_data = alg_data.data();
-    data.enabled = true;
+    strcpy(server_data.alg_name, impl->getName().c_str());
+    server_data.stinger = S;
+    server_data.alg_data_per_vertex = impl->getDataPerVertex();
+    server_data.alg_data = alg_data.data();
+    server_data.enabled = true;
 }
 
 void
 StingerAlgorithm::observeInsertions(vector<stinger_edge_update> &recentInsertions)
 {
-    data.num_insertions = recentInsertions.size();
-    data.insertions = recentInsertions.data();
+    server_data.num_insertions = recentInsertions.size();
+    server_data.insertions = recentInsertions.data();
 }
 
 void
 StingerAlgorithm::observeDeletions(vector<stinger_edge_update> &recentDeletions)
 {
-    data.num_deletions = recentDeletions.size();
-    data.deletions = recentDeletions.data();
+    server_data.num_deletions = recentDeletions.size();
+    server_data.deletions = recentDeletions.data();
 }
 
 void
 StingerAlgorithm::observeVertexCount(int64_t nv)
 {
-    data.max_active_vertex = nv;
+    server_data.max_active_vertex = nv;
 }
 
 void
@@ -131,8 +131,88 @@ StingerAlgorithm::setSources(const vector<int64_t> &sources)
 }
 
 void
-StingerAlgorithm::onInit(){ impl->onInit(&data); }
+StingerAlgorithm::onInit(){ impl->onInit(&server_data); }
 void
-StingerAlgorithm::onPre(){ impl->onPre(&data); }
+StingerAlgorithm::onPre(){ impl->onPre(&server_data); }
 void
-StingerAlgorithm::onPost(){ impl->onPost(&data); }
+StingerAlgorithm::onPost(){ impl->onPost(&server_data); }
+
+// Helper functions to split strings
+// http://stackoverflow.com/a/236803/1877086
+static void split(const string &s, char delim, vector<string> &elems) {
+    stringstream ss(s);
+    string item;
+    while (getline(ss, item, delim)) {
+        elems.push_back(item);
+    }
+}
+static vector<string> split(const string &s, char delim) {
+    vector<string> elems;
+    split(s, delim, elems);
+    return elems;
+}
+
+int64_t *
+StingerAlgorithm::get_data_ptr()
+{
+    // Some algorithms provide multiple result arrays
+    // Decide which one we want
+    string desc;
+    if        (name == "bc") { desc = "bc";
+    } else if (name == "bfs") { desc = "level";
+    } else if (name == "cc") { desc = "component_label";
+    } else if (name == "clustering") { desc = "coeff";
+    } else if (name == "simple_communities") { desc = "community_label";
+    } else if (name == "simple_communities_updating") { desc = "community_label";
+    } else if (name == "streaming_cc") { desc = "component_label";
+    } else if (name == "kcore") { desc = "kcore";
+    } else if (name == "pagerank") { desc = "pagerank";
+    } else {
+        cerr << "Algorithm " << name << " not implemented!\n";
+        exit(-1);
+    }
+
+    // Find the position of the result array we want within alg_data
+    // Example: Suppose data description is equal to "ll foo bar", and we want data for "bar"
+    // We find the index of "bar" to be 3
+    // We skip past the elements of "foo" (max_nv * sizeof(l))
+    // Then return the pointer
+    int64_t max_nv = server_data.stinger->max_nv;
+    auto tokens = split(impl->getDataDescription(), ' ');
+    auto pos = std::find(tokens.begin(), tokens.end(), desc);
+    if (pos == tokens.end()) { return nullptr; }
+    // Index of the character that describes the length of our data
+    size_t loc = pos - tokens.begin() - 1;
+    string spec = tokens[0];
+    // This function expects an array of 64-bit type, can't handle smaller types yet
+    assert(spec[loc] == 'l' || spec[loc] == 'd');
+    uint8_t * data = alg_data.data();
+    for (int i = 0; i < loc; ++i)
+    {
+        switch (spec[i]) {
+            case 'f': { data += (sizeof(float) * max_nv); } break;
+            case 'd': { data += (sizeof(double) * max_nv); } break;
+            case 'i': { data += (sizeof(int32_t) * max_nv); } break;
+            case 'l': { data += (sizeof(int64_t) * max_nv); } break;
+            case 'b': { data += (sizeof(uint8_t) * max_nv); } break;
+        }
+    }
+    return reinterpret_cast<int64_t*>(data);
+}
+
+
+void
+StingerAlgorithm::setData(const std::vector<int64_t> &data)
+{
+    int64_t max_nv = server_data.stinger->max_nv;
+    int64_t * ptr = get_data_ptr();
+    memcpy(ptr, data.data(), max_nv);
+}
+
+void
+StingerAlgorithm::getData(std::vector<int64_t> &data)
+{
+    int64_t max_nv = server_data.stinger->max_nv;
+    const int64_t *ptr = get_data_ptr();
+    data.assign(ptr, ptr + max_nv);
+}

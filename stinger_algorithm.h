@@ -12,8 +12,9 @@ class StingerAlgorithm
 {
 protected:
     std::shared_ptr<gt::stinger::IDynamicGraphAlgorithm> impl;
-    stinger_registered_alg data;
+    stinger_registered_alg server_data;
     std::vector<uint8_t> alg_data;
+    int64_t * get_data_ptr();
 public:
     const std::string name;
     StingerAlgorithm(stinger_t * S, std::string name);
@@ -28,9 +29,14 @@ public:
     void observeDeletions(std::vector<stinger_edge_update> &recentDeletions);
     void observeVertexCount(int64_t nv);
     void setSources(const std::vector<int64_t> &sources);
+    void getData(std::vector<int64_t>& data);
+    void setData(const std::vector<int64_t>& data);
 
     void onInit();
     void onPre();
     void onPost();
     static const std::vector<std::string> supported_algs;
+
+
+
 };
