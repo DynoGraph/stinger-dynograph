@@ -50,6 +50,7 @@ StingerServer::get_supported_algs()
 void
 StingerServer::before_batch(const DynoGraph::Batch& batch, int64_t threshold)
 {
+#ifdef STINGER_DYNOGRAPH_RECORD_GRAPH_STATS
     // Compute degree distributions
     Hooks &hooks = Hooks::getInstance();
     DegreeStats batch_degree_dist = compute_degree_distribution(batch);
@@ -62,7 +63,7 @@ StingerServer::before_batch(const DynoGraph::Batch& batch, int64_t threshold)
     hooks.set_stat("affected_degree_max", affected_graph_dist.both.max);
     hooks.set_stat("affected_degree_variance", affected_graph_dist.both.variance);
     hooks.set_stat("affected_degree_skew", affected_graph_dist.both.skew);
-
+#endif
     assert(batch.is_directed());
     // Store the insertions in the format that the algorithms expect
     int64_t num_insertions = batch.size();
@@ -122,7 +123,9 @@ StingerServer::onGraphChange()
     {
         alg.observeVertexCount(max_active_vertex);
     }
+#ifdef STINGER_DYNOGRAPH_RECORD_GRAPH_STATS
     recordGraphStats();
+#endif
 }
 
 void
@@ -155,8 +158,10 @@ StingerServer::insert_batch(const DynoGraph::Batch & b)
     } else {
 #ifdef USE_STINGER_BATCH_INSERT
         graph.insert_using_stinger_batch(b);
+#elif defined(USE_DYNAMIC_SCHEDULE_FOR_INSERT)
+        graph.insert_using_parallel_for_dynamic_schedule(b);
 #else
-        graph.insert_using_parallel_for(b);
+        graph.insert_using_parallel_for_static_schedule(b);
 #endif
     }
     onGraphChange();

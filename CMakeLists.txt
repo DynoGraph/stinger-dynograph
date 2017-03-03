@@ -2,11 +2,25 @@ cmake_minimum_required (VERSION 2.8.11)
 project (stinger-dynograph)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(BUILD_SHARED_LIBS OFF)
-set(USE_STINGER_BATCH_INSERT TRUE CACHE BOOL "Use the new stinger_batch functions to do insertions.")
-set(ENABLE_DYNOGRAPH_EDGE_COUNT TRUE CACHE BOOL "Enable per-thread counters for number of edges traversed")
+
+set(USE_STINGER_BATCH_INSERT TRUE CACHE BOOL
+"Use the new stinger_batch functions to do insertions.")
+
+set(USE_DYNAMIC_SCHEDULE_FOR_INSERT TRUE CACHE BOOL
+"Use OMP dynamic schedule for edge insertions (ignored when STINGER_BATCH_INSERT=ON).")
+
+set(STINGER_DYNOGRAPH_RECORD_GRAPH_STATS TRUE CACHE BOOL
+"Compute degree distributions and graph fragmentation for each batch")
+
+set(ENABLE_DYNOGRAPH_EDGE_COUNT TRUE CACHE BOOL
+"Enable per-thread counters for number of edges traversed")
 
 if(${USE_STINGER_BATCH_INSERT})
   add_definitions(-DUSE_STINGER_BATCH_INSERT)
+endif()
+
+if(${USE_DYNAMIC_SCHEDULE_FOR_INSERT})
+  add_definitions(-DUSE_DYNAMIC_SCHEDULE_FOR_INSERT)
 endif()
 
 if(${ENABLE_DYNOGRAPH_EDGE_COUNT})

@@ -272,14 +272,38 @@ StingerGraph::insert_using_set_initial_edges(const DynoGraph::Batch& batch)
 }
 
 void
-StingerGraph::insert_using_parallel_for(const DynoGraph::Batch& batch)
+StingerGraph::insert_using_parallel_for_dynamic_schedule(const DynoGraph::Batch& batch)
 {
     // Insert the edges in parallel
     const int64_t type = 0;
     const bool directed = batch.is_directed();
 
-    int64_t chunksize = 8192;
+    // Some inserts take longer than others, depending on vertex degree
+    // Too many chunks per thread -> synchronization overhead at the work queue
+    // Too few chunks per thread -> load imbalance (waiting for a few slow threads)
+    int64_t chunks_per_thread = 8;
+    int64_t chunksize = std::max(1UL, batch.size() / (omp_get_max_threads()*chunks_per_thread));
     OMP("omp parallel for schedule(dynamic, chunksize)")
+    for (auto e = batch.begin(); e < batch.end(); ++e)
+    {
+        if (directed)
+        {
+            stinger_incr_edge     (S, type, e->src, e->dst, e->weight, e->timestamp);
+        } else { // undirected
+            stinger_incr_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
+        }
+        DYNOGRAPH_EDGE_COUNT_TRAVERSE_EDGE();
+    }
+}
+
+void
+StingerGraph::insert_using_parallel_for_static_schedule(const DynoGraph::Batch& batch)
+{
+    // Insert the edges in parallel
+    const int64_t type = 0;
+    const bool directed = batch.is_directed();
+
+    OMP("omp parallel for schedule(static)")
     for (auto e = batch.begin(); e < batch.end(); ++e)
     {
         if (directed)
