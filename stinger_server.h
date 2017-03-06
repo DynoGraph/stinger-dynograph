@@ -29,7 +29,7 @@ public:
     void before_batch(const DynoGraph::Batch& batch, const int64_t threshold);
     void insert_batch(const DynoGraph::Batch & b);
     void delete_edges_older_than(int64_t threshold);
-    void update_alg(const std::string &name, const std::vector<int64_t> &sources, std::vector<int64_t> &data);
+    void update_alg(const std::string &name, const std::vector<int64_t> &sources, DynoGraph::Range<int64_t> data);
 
     int64_t get_out_degree(int64_t vertex_id) const;
     int64_t get_num_vertices() const;

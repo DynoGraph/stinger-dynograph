@@ -174,7 +174,7 @@ StingerServer::delete_edges_older_than(int64_t threshold) {
 }
 
 void
-StingerServer::update_alg(const string& name, const std::vector<int64_t> &sources, std::vector<int64_t> &data)
+StingerServer::update_alg(const string& name, const std::vector<int64_t> &sources, DynoGraph::Range<int64_t> data)
 {
     // Look up pointer to implementation
     auto alg = std::find_if(algs.begin(), algs.end(),

@@ -7,6 +7,7 @@
 
 #include <stinger_alg/streaming_algorithm.h>
 #include <stinger_net/stinger_alg.h>
+#include <dynograph_util.h>
 
 class StingerAlgorithm
 {
@@ -29,8 +30,8 @@ public:
     void observeDeletions(std::vector<stinger_edge_update> &recentDeletions);
     void observeVertexCount(int64_t nv);
     void setSources(const std::vector<int64_t> &sources);
-    void getData(std::vector<int64_t>& data);
-    void setData(const std::vector<int64_t>& data);
+    void getData(DynoGraph::Range<int64_t>& data);
+    void setData(const DynoGraph::Range<int64_t>& data);
 
     void onInit();
     void onPre();

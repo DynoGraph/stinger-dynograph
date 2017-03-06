@@ -202,17 +202,23 @@ StingerAlgorithm::get_data_ptr()
 
 
 void
-StingerAlgorithm::setData(const std::vector<int64_t> &data)
+StingerAlgorithm::setData(const DynoGraph::Range<int64_t> &data)
 {
-    int64_t max_nv = server_data.stinger->max_nv;
+    uint64_t max_nv = server_data.stinger->max_nv;
     int64_t * ptr = get_data_ptr();
-    memcpy(ptr, data.data(), max_nv);
+    #pragma omp parallel for
+    for (uint64_t i = 0; i < max_nv; ++i) {
+        ptr[i] = data[i];
+    }
 }
 
 void
-StingerAlgorithm::getData(std::vector<int64_t> &data)
+StingerAlgorithm::getData(DynoGraph::Range<int64_t> &data)
 {
-    int64_t max_nv = server_data.stinger->max_nv;
-    const int64_t *ptr = get_data_ptr();
-    data.assign(ptr, ptr + max_nv);
+    uint64_t max_nv = server_data.stinger->max_nv;
+    const int64_t * ptr = get_data_ptr();
+    #pragma omp parallel for
+    for (uint64_t i = 0; i < max_nv; ++i) {
+        data[i] = ptr[i];
+    }
 }
