@@ -150,21 +150,14 @@ StingerGraph::insert_using_set_initial_edges(const DynoGraph::Batch& batch)
 {
     using std::vector;
 
-    // Assert edge list is sorted and no duplicates exist
-    assert(std::is_sorted(batch.begin(), batch.end()));
+    // Assert no duplicates exist in edge list
     assert(std::adjacent_find(batch.begin(), batch.end(),
         [](const DynoGraph::Edge &a, const DynoGraph::Edge &b) { return a.src == b.src && a.dst == b.dst; }
     ) == batch.end());
     assert(batch.size() > 0);
 
     // Find the largest vertex ID
-    int64_t max_src = std::max_element(batch.begin(), batch.end(),
-        [](const DynoGraph::Edge& a, const DynoGraph::Edge& b) { return a.src < b.src; }
-    )->src;
-    int64_t max_dst = std::max_element(batch.begin(), batch.end(),
-        [](const DynoGraph::Edge& a, const DynoGraph::Edge& b) { return a.dst < b.dst; }
-    )->dst;
-    int64_t nv = std::max(max_src, max_dst) + 1;
+    int64_t nv = batch.max_vertex_id() + 1;
 
     /**
      * stinger stores every edge in two places: an out-edge at the source vertex, and
