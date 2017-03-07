@@ -24,7 +24,7 @@ stinger_config_t generate_stinger_config(int64_t nv) {
 
     // Start with size we will try to fill
     // Scaled by 75% because that's what stinger_new_full does
-    uint64_t sz = ((uint64_t)stinger_max_memsize() * 3)/4;
+    int64_t sz = ((int64_t)stinger_max_memsize() * 3)/4;
 
     // Subtract storage for vertices
     sz -= stinger_vertices_size(nv);
@@ -39,6 +39,13 @@ stinger_config_t generate_stinger_config(int64_t nv) {
     // Leave room for the edge block tracking structures
     sz -= sizeof(stinger_ebpool);
     sz -= sizeof(stinger_etype_array);
+
+    if (sz < 0) {
+        DynoGraph::Logger &logger = DynoGraph::Logger::get_instance();
+        logger << "Not enough memory to allocate a STINGER data structure with " << nv << " vertices\n";
+        logger << "Need at least " << -sz << " more bytes (not counting edge blocks).\n";
+        DynoGraph::die();
+    }
 
     // Finally, calculate how much room is left for the edge blocks themselves
     int64_t nebs = sz / (sizeof(stinger_eb) + sizeof(eb_index_t));
