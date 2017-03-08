@@ -11,7 +11,7 @@ extern "C" {
 }
 #include <stinger_net/stinger_alg.h>
 #include <stinger_core/stinger_batch_insert.h>
-#include <hooks/dynograph_edge_count.h>
+#include <dynograph_edge_count.h>
 
 using std::cerr;
 
@@ -102,8 +102,6 @@ StingerGraph::insert_using_stinger_batch(const DynoGraph::Batch& batch)
         const DynoGraph::Edge &e = *(batch.begin() + i);
         updates[i] = EdgeAdapter(e);
     }
-    Hooks &hooks = Hooks::getInstance();
-    DYNOGRAPH_EDGE_COUNT_TRAVERSE_MULTIPLE_EDGES(updates.size());
     if (batch.is_directed())
     { stinger_batch_incr_edges<EdgeAdapter>(S, updates.begin(), updates.end()); }
     else
@@ -292,7 +290,6 @@ StingerGraph::insert_using_parallel_for_dynamic_schedule(const DynoGraph::Batch&
         } else { // undirected
             stinger_incr_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
         }
-        DYNOGRAPH_EDGE_COUNT_TRAVERSE_EDGE();
     }
 }
 
@@ -312,7 +309,6 @@ StingerGraph::insert_using_parallel_for_static_schedule(const DynoGraph::Batch& 
         } else { // undirected
             stinger_incr_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
         }
-        DYNOGRAPH_EDGE_COUNT_TRAVERSE_EDGE();
     }
 }
 
@@ -320,17 +316,10 @@ StingerGraph::insert_using_parallel_for_static_schedule(const DynoGraph::Batch& 
 void
 StingerGraph::deleteOlderThan(int64_t threshold)
 {
-    Hooks &hooks = Hooks::getInstance();
     STINGER_RAW_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S)
     {
         DYNOGRAPH_EDGE_COUNT_TRAVERSE_EDGE();
         if (STINGER_EDGE_TIME_RECENT < threshold) {
-            // Record the deletion
-            stinger_edge_update u;
-            u.source = STINGER_EDGE_SOURCE;
-            u.destination = STINGER_EDGE_DEST;
-            u.weight = STINGER_EDGE_WEIGHT;
-            u.time = STINGER_EDGE_TIME_RECENT;
             // Delete the edge
             update_edge_data_and_direction (S, current_eb__, i__, ~STINGER_EDGE_DEST, 0, 0, STINGER_EDGE_DIRECTION, EDGE_WEIGHT_SET);
         }
