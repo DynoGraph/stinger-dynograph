@@ -143,10 +143,14 @@ std::ostream& operator<<(std::ostream& os, const directed_edge& e)
     return os;
 }
 
-void
-StingerGraph::insert_using_set_initial_edges(const DynoGraph::Batch& batch)
+extern "C" void
+dynograph_init_stinger_from_edge_list(stinger_t *S, void * edges, size_t n)
 {
     using std::vector;
+
+    // Wrap array argument
+    DynoGraph::Edge* edge_ptr = static_cast<DynoGraph::Edge *>(edges);
+    DynoGraph::Batch batch(edge_ptr, edge_ptr + n);
 
     // Assert no duplicates exist in edge list
     assert(std::adjacent_find(batch.begin(), batch.end(),
@@ -267,6 +271,12 @@ StingerGraph::insert_using_set_initial_edges(const DynoGraph::Batch& batch)
     );
 
     assert(stinger_consistency_check(S, nv) == 0);
+}
+
+void
+StingerGraph::insert_using_set_initial_edges(const DynoGraph::Batch& batch)
+{
+    dynograph_init_stinger_from_edge_list(S, batch.begin(), batch.size());
 }
 
 void
