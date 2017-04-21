@@ -56,6 +56,8 @@ link_libraries(
   hooks
 )
 
+add_library(dynograph_stinger_utils stinger_graph.cpp)
+
 add_executable(dynograph
   main.cpp
   stinger_server.cpp
