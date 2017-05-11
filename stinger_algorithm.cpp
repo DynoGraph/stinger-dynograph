@@ -124,7 +124,7 @@ void
 StingerAlgorithm::setSources(const vector<int64_t> &sources)
 {
     if (auto b = std::dynamic_pointer_cast<BreadthFirstSearch>(impl)) {
-        b->setSource(sources[0]);
+        b->setSources(sources);
     } else if (auto b = std::dynamic_pointer_cast<BetweennessCentrality>(impl)) {
         b->setSources(sources);
     }
