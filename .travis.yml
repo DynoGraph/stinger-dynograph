@@ -1,0 +1,24 @@
+sudo: false
+language: cpp
+compiler:
+  - gcc
+install:
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
+before_script:
+  - mkdir build
+  - cd build
+  - cmake ..
+script:
+  - make -j2
+  - CTEST_OUTPUT_ON_FAILURE=1 make test
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+      - george-edison55-precise-backports
+    packages:
+      - cmake
+      - cmake-data
+      - gcc-4.8
+      - g++-4.8
+
