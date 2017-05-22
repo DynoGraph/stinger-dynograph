@@ -9,7 +9,7 @@
 #include <cmath>
 
 #include <hooks.h>
-#include <dynograph_util.h>
+#include <dynograph_util/logger.h>
 #include <stinger_core/stinger_atomics.h>
 #include "stinger_server.h"
 
@@ -27,6 +27,26 @@ StingerServer::StingerServer(const DynoGraph::Args& args, int64_t max_vertex_id)
 , graph(max_vertex_id + 1)
 , max_active_vertex(0)
 {
+    graph.printSize();
+
+    algs.reserve(args.alg_names.size());
+    // Register algorithms to run
+    for (string algName : args.alg_names)
+    {
+        DynoGraph::Logger::get_instance() << "Initializing " << algName << "...\n";
+        algs.emplace_back(graph.S, algName);
+        algs.back().onInit();
+    }
+
+    onGraphChange();
+}
+
+StingerServer::StingerServer(const DynoGraph::Args& args, int64_t max_vertex_id, const DynoGraph::Batch& batch)
+: DynoGraph::DynamicGraph(args, max_vertex_id)
+, graph(max_vertex_id + 1)
+, max_active_vertex(0)
+{
+    graph.insert_using_set_initial_edges(batch);
     graph.printSize();
 
     algs.reserve(args.alg_names.size());

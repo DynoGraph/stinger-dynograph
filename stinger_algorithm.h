@@ -7,7 +7,8 @@
 
 #include <stinger_alg/streaming_algorithm.h>
 #include <stinger_net/stinger_alg.h>
-#include <dynograph_util.h>
+
+#include <dynograph_util/range.h>
 
 class StingerAlgorithm
 {

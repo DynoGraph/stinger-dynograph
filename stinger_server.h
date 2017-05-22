@@ -5,7 +5,8 @@
 #include <string>
 #include <stdint.h>
 
-#include <dynograph_util.h>
+#include <dynograph_util/args.h>
+#include <dynograph_util/dynamic_graph.h>
 
 #include "stinger_graph.h"
 #include "stinger_algorithm.h"
@@ -24,6 +25,7 @@ private:
 public:
 
     StingerServer(const DynoGraph::Args& args, int64_t max_nv);
+    StingerServer(const DynoGraph::Args &args, int64_t max_vertex_id, const DynoGraph::Batch &batch);
 
     static std::vector<std::string> get_supported_algs();
     void before_batch(const DynoGraph::Batch& batch, const int64_t threshold);

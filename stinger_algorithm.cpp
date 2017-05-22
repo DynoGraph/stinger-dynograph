@@ -9,8 +9,6 @@
 #include <cmath>
 #include <algorithm>
 
-#include <dynograph_util.h>
-
 extern "C" {
 #include <stinger_core/stinger.h>
 #include <stinger_alg/bfs.h>

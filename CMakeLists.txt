@@ -46,7 +46,7 @@ add_subdirectory(lib)
 
 include_directories(
   ${CMAKE_BINARY_DIR}/include # STINGER publishes headers to build directory
-  lib/dynograph_util
+  lib
 )
 
 link_libraries(

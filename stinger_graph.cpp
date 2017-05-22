@@ -5,6 +5,8 @@
 #include <iomanip>
 #include <numeric>
 
+#include <dynograph_util/logger.h>
+
 extern "C" {
 #include <stinger_core/stinger.h>
 #include <stinger_core/core_util.h>

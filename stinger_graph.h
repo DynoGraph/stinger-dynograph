@@ -1,6 +1,6 @@
 #pragma once
 
-#include <dynograph_util.h>
+#include <dynograph_util/batch.h>
 
 extern "C" {
 #include <stinger_core/stinger.h>
