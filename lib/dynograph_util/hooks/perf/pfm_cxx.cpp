@@ -1,0 +1,56 @@
+// Adapted from GraphBIG <https://github.com/graphbig/graphBIG>
+
+#include "pfm_cxx.h"
+#include <sys/types.h>
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <errno.h>
+#include <unistd.h>
+#include <string.h>
+#include <locale.h>
+#include <sys/ioctl.h>
+#include <err.h>
+
+#include <perfmon/pfmlib_perf_event.h>
+
+pfm_cxx& pfm_cxx::getInstance()
+{
+    static pfm_cxx instance;
+    return instance;
+}
+
+pfm_cxx::pfm_cxx()
+{
+    int ret = pfm_initialize();
+        if (ret != PFM_SUCCESS)
+            errx(1, "cannot initialize library: %s", pfm_strerror(ret));
+    return;
+}
+
+pfm_cxx::~pfm_cxx()
+{
+    /* free libpfm resources cleanly */
+    pfm_terminate();
+}
+
+bool pfm_cxx::event_encoding(const std::string& event, unsigned int& type, unsigned long long& config)
+{
+    int ret;
+    struct perf_event_attr attr;
+    memset(&attr, 0, sizeof(attr));
+
+    ret = pfm_get_perf_event_encoding(event.c_str(), PFM_PLM3, &attr, NULL, NULL);
+    if (ret != PFM_SUCCESS)
+    {
+        type = 0;
+        config = 0;
+        return false;
+    }
+
+    type = attr.type;
+    config = attr.config;
+
+    return true;
+}
