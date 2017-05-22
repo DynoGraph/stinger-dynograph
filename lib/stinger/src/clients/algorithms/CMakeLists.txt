@@ -1,0 +1,52 @@
+add_executable(stinger_betweenness betweenness/src/betweenness.cpp)
+target_link_libraries(stinger_betweenness stinger_net stinger_alg)
+
+add_executable(stinger_clustering_coefficients clustering_coefficients/src/clustering.cpp)
+target_link_libraries(stinger_clustering_coefficients stinger_net stinger_alg)
+
+add_executable(stinger_kcore kcore/src/kcore.cpp)
+target_link_libraries(stinger_kcore stinger_net stinger_alg)
+
+add_executable(stinger_pagerank pagerank/src/pagerank.cpp)
+target_link_libraries(stinger_pagerank stinger_net stinger_alg)
+
+add_subdirectory(pagerank_updating)
+
+add_executable(stinger_rate_monitor rate_monitor/src/rate_monitor.c)
+target_link_libraries(stinger_rate_monitor stinger_net stinger_alg)
+
+add_executable(stinger_simple_communities simple_communities/src/simple_communities.cpp)
+target_link_libraries(stinger_simple_communities stinger_net stinger_alg)
+
+add_executable(stinger_simple_communities_updating simple_communities/src/simple_communities_updating.cpp)
+target_link_libraries(stinger_simple_communities_updating stinger_net stinger_alg)
+
+
+add_subdirectory(spmspv_test)
+
+add_executable(stinger_static_components static_components/src/static_components.cpp)
+target_link_libraries(stinger_static_components stinger_net stinger_alg)
+
+add_executable(stinger_test_alg test_alg/src/test_alg.cpp)
+target_link_libraries(stinger_test_alg stinger_net stinger_alg)
+
+add_executable(stinger_weakly_connected_components weakly_connected_components/src/main.c)
+target_link_libraries(stinger_weakly_connected_components stinger_net stinger_alg)
+
+add_executable(stinger_streaming_connected_components_client streaming_connected_components/src/main.cpp)
+target_link_libraries(stinger_streaming_connected_components_client stinger_net stinger_alg)
+
+add_executable(stinger_graph_partition graph_partition/src/graph_partition.c)
+target_link_libraries(stinger_graph_partition stinger_net stinger_alg)
+
+add_executable(stinger_independent_sets independent_set/src/independet_set.c)
+target_link_libraries(stinger_independent_sets stinger_net stinger_alg)
+
+add_executable(stinger_diameter diameter/src/diameter.cpp)
+target_link_libraries(stinger_diameter stinger_net stinger_alg)
+
+add_executable(stinger_hits hits_centrality/src/hits.c)
+target_link_libraries(stinger_hits stinger_net stinger_alg)
+
+add_executable(stinger_community_detection community_detection/src/community_detection.c)
+target_link_libraries(stinger_community_detection stinger_net stinger_alg)
