@@ -12,6 +12,8 @@ set(sources
   src/graph_partition.c
   src/hits_centrality.c
   src/modularity.c
+  src/spmv_spmspv.c
+  src/pagerank_updating.c
 
   adamic_adar/src/adamic_adar.c
 
@@ -59,6 +61,8 @@ set(headers
   inc/graph_partition.h
   inc/hits_centrality.h
   inc/modularity.h
+  inc/spmv_spmspv.h
+  inc/pagerank_updating.h
 
   adamic_adar/inc/adamic_adar.h
   betweenness/inc/betweenness.h
@@ -102,9 +106,7 @@ publish_headers(headers "${CMAKE_BINARY_DIR}/include/stinger_alg")
 include_directories("${CMAKE_BINARY_DIR}/include/stinger_alg")
 include_directories("${CMAKE_BINARY_DIR}/include/stinger_core")
 include_directories("${CMAKE_BINARY_DIR}/include/stinger_net")
-include_directories("${CMAKE_BINARY_DIR}/include/stinger_utils")
 
 set_source_files_properties(${config} PROPERTIES GENERATED TRUE)
 add_library(stinger_alg ${sources} ${headers} ${config})
-target_link_libraries(stinger_alg stinger_core stinger_net stinger_utils compat)
-
+target_link_libraries(stinger_alg stinger_core compat)
