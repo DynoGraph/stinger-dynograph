@@ -4,8 +4,8 @@ project (STINGER)
 include (ExternalProject)
 include (CTest)
 
-set(STINGER_VERSION_MAJOR 2015)
-set(STINGER_VERSION_MINOR 10)
+set(STINGER_VERSION_MAJOR 2017)
+set(STINGER_VERSION_MINOR 02)
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
@@ -26,6 +26,9 @@ if(OPENMP_FOUND)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+else()
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lpthread")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lpthread")
 endif()
 
 link_libraries(m)
@@ -47,7 +50,8 @@ ENDIF()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu9x")
 
 # Doxygen
-if(BUILD_DOCUMENTATION)
+option(BUILD_DOCUMENTATION "Use Doxygen to create the HTML based API documentation" OFF)
+if (BUILD_DOCUMENTATION)
   find_package(Doxygen)
   if (DOXYGEN_FOUND)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/doxygen/Doxyfile.in
@@ -137,6 +141,11 @@ set(STINGER_DEFAULT_NUMVTYPES "128" CACHE STRING "Default number of vertex types
 set(STINGER_DEFAULT_NEB_FACTOR "4" CACHE STRING "Default number of edge blocks per vertex")
 set(STINGER_EDGEBLOCKSIZE "14" CACHE STRING "Number of edges per edge block")
 set(STINGER_NAME_STR_MAX "255" CACHE STRING "Max string length in physmap")
+
+MATH(EXPR STINGER_NAME_STR_MAX_ALIGN "(${STINGER_NAME_STR_MAX}+1) % 8")
+if (NOT STINGER_NAME_STR_MAX_ALIGN EQUAL 0)
+  MESSAGE(SEND_ERROR "STINGER_NAME_STR_MAX must be a multiple of 8 (minus one for null terminator).")
+endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/lib/stinger_core/inc/stinger_defs.h.in ${CMAKE_BINARY_DIR}/include/stinger_core/stinger_defs.h @ONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/lib/stinger_core/inc/stinger_names.h.in ${CMAKE_BINARY_DIR}/include/stinger_core/stinger_names.h @ONLY)

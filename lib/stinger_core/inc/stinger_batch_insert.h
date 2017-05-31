@@ -325,7 +325,6 @@ protected:
                 }
                 // Move the cursor to the next edge block
                 curs.loc = &(tmp->next);
-                curs.eb = readff(curs.loc);
             }
 
             /* 3: Needs a new block to be inserted at end of list. */
