@@ -32,6 +32,7 @@ set(sources
 
   pagerank_updating/src/spmv_spmspv.c
   pagerank_updating/src/pagerank_updating.c
+  pagerank_updating/src/dynamic_pagerank_updating.cpp
 
   random/src/random.c
 
@@ -81,6 +82,7 @@ set(headers
 
   pagerank_updating/inc/spmv_spmspv.h
   pagerank_updating/inc/pagerank_updating.h
+  pagerank_updating/inc/dynamic_pagerank_updating.h
 
   random/inc/random.h
   rmat/inc/rmat.h
