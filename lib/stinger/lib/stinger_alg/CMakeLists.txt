@@ -12,8 +12,6 @@ set(sources
   src/graph_partition.c
   src/hits_centrality.c
   src/modularity.c
-  src/spmv_spmspv.c
-  src/pagerank_updating.c
 
   adamic_adar/src/adamic_adar.c
 
@@ -31,6 +29,9 @@ set(sources
 
   pagerank/src/pagerank.c
   pagerank/src/dynamic_pagerank.cpp
+
+  pagerank_updating/src/spmv_spmspv.c
+  pagerank_updating/src/pagerank_updating.c
 
   random/src/random.c
 
@@ -61,8 +62,6 @@ set(headers
   inc/graph_partition.h
   inc/hits_centrality.h
   inc/modularity.h
-  inc/spmv_spmspv.h
-  inc/pagerank_updating.h
 
   adamic_adar/inc/adamic_adar.h
   betweenness/inc/betweenness.h
@@ -79,6 +78,9 @@ set(headers
 
   pagerank/inc/pagerank.h
   pagerank/inc/dynamic_pagerank.h
+
+  pagerank_updating/inc/spmv_spmspv.h
+  pagerank_updating/inc/pagerank_updating.h
 
   random/inc/random.h
   rmat/inc/rmat.h
