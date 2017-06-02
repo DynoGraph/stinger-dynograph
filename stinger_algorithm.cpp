@@ -25,6 +25,7 @@ extern "C" {
 #include <stinger_alg/dynamic_clustering.h>
 #include <stinger_alg/dynamic_kcore.h>
 #include <stinger_alg/dynamic_pagerank.h>
+#include <stinger_alg/dynamic_pagerank_updating.h>
 #include <stinger_alg/dynamic_simple_communities.h>
 #include <stinger_alg/dynamic_simple_communities_updating.h>
 #include <stinger_alg/dynamic_streaming_connected_components.h>
@@ -51,7 +52,8 @@ StingerAlgorithm::supported_algs = {
     "simple_communities_updating",
     "streaming_cc",
     "kcore",
-    "pagerank"
+    "pagerank",
+    "pagerank_updating"
 };
 
 shared_ptr<IDynamicGraphAlgorithm> createImplementation(string name)
@@ -74,6 +76,8 @@ shared_ptr<IDynamicGraphAlgorithm> createImplementation(string name)
         return make_shared<KCore>();
     } else if (name == "pagerank") {
         return make_shared<PageRank>("", false, true, EPSILON_DEFAULT, DAMPINGFACTOR_DEFAULT, MAXITER_DEFAULT);
+    } else if (name == "pagerank_updating") {
+        return make_shared<PageRankUpdating>("dprheld", 0.85, 0, 1.0);
     } else {
         cerr << "Algorithm " << name << " not implemented!\n";
         exit(-1);
@@ -165,6 +169,7 @@ StingerAlgorithm::get_data_ptr()
     } else if (name == "streaming_cc") { desc = "component_label";
     } else if (name == "kcore") { desc = "kcore";
     } else if (name == "pagerank") { desc = "pagerank";
+    } else if (name == "pagerank_updating") { desc = "dprheld";
     } else {
         cerr << "Algorithm " << name << " not implemented!\n";
         exit(-1);
