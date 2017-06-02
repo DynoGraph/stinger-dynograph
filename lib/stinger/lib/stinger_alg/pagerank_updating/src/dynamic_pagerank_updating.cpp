@@ -278,7 +278,7 @@ PageRankUpdating::onPost(stinger_registered_alg * alg)
         pr_time[RESTART] = toc ();
         pr_nupd[RESTART] = nv;
         pr_nberr[RESTART] = calc_berr (nv, residual[RESTART]);
-        pr_resdiff[DPR_HELD] = 0.0;
+        pr_resdiff[RESTART] = 0.0;
     }
 
     if (run_alg[DPR_HELD]) {
@@ -296,7 +296,7 @@ PageRankUpdating::onPost(stinger_registered_alg * alg)
         OMP(parallel for OMP_SIMD reduction(+: nberr, resdiff))
         for (int64_t k = 0; k < nv; ++k) {
             nberr += fabs(R[k]);
-            resdiff += fabs(R[k] - residual[RESTART][k]);
+            resdiff += fabs(R[k] - residual[DPR_HELD][k]);
         }
         pr_nberr[DPR_HELD] = nberr / 2.0;
         pr_resdiff[DPR_HELD] = resdiff;
@@ -335,7 +335,7 @@ PageRankUpdating::onPost(stinger_registered_alg * alg)
         OMP(parallel for OMP_SIMD reduction(+: nberr, resdiff))
         for (int64_t k = 0; k < nv; ++k) {
             nberr += fabs(R[k]);
-            resdiff += fabs(R[k] - residual[RESTART][k]);
+            resdiff += fabs(R[k] - residual[DPR][k]);
         }
         pr_nberr[DPR] = nberr / 2.0;
 #endif
@@ -363,7 +363,7 @@ PageRankUpdating::onPost(stinger_registered_alg * alg)
         OMP(parallel for OMP_SIMD reduction(+: nberr, resdiff))
         for (int64_t k = 0; k < nv; ++k) {
             nberr += fabs(R[k]);
-            resdiff += fabs(R[k] - residual[RESTART][k]);
+            resdiff += fabs(R[k] - residual[DPR_ALL][k]);
         }
         pr_nberr[DPR_ALL] = nberr / 2.0;
 #endif
