@@ -160,6 +160,7 @@ pagerank_core (const int64_t nv,
 
       OMP(master) rho = safediv (norm1_xnew_diff, norm1_x);
 #endif
+      OMP(barrier)
 
       if (rho < termthresh || k == maxiter-1) break;
 
