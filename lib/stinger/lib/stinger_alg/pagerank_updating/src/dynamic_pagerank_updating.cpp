@@ -185,7 +185,7 @@ PageRankUpdating::onInit(stinger_registered_alg * alg)
     }
 
     const int64_t NE = stinger_total_edges (alg->stinger);
-    if (NE) {
+    //if (NE) {
         tic ();
         niter[pr_val_init] = pagerank (nv, alg->stinger, pr_val[pr_val_init], v, residual[pr_val_init], alpha, maxiter, workspace);
         pr_time[pr_val_init] = toc ();
@@ -209,7 +209,7 @@ PageRankUpdating::onInit(stinger_registered_alg * alg)
                     residual[k][i] = residual[pr_val_init][i];
                 }
             }
-    }
+    //}
 }
 
 void
