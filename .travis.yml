@@ -1,15 +1,16 @@
+dist: trusty
 sudo: false
 language: cpp
 compiler:
   - gcc
 install:
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-5" CC="gcc-5"; fi
 before_script:
   - mkdir build
   - cd build
   - cmake ..
 script:
-  - make -j2
+  - make
   - OMP_NUM_THREADS=2 STINGER_MAX_MEMSIZE=64M CTEST_OUTPUT_ON_FAILURE=1 make test
 addons:
   apt:
@@ -19,5 +20,7 @@ addons:
     packages:
       - cmake
       - cmake-data
-      - gcc-4.8
-      - g++-4.8
+      - gcc-5
+      - g++-5
+      - libprotobuf-dev
+      - protobuf-compiler
