@@ -3,7 +3,7 @@
 #include "edge.h"
 #include "range.h"
 #include "pvector.h"
-#include <inttypes.h>
+#include <cinttypes>
 
 namespace DynoGraph {
 

@@ -2,7 +2,7 @@
 
 #include "pfm_cxx.h"
 #include <sys/types.h>
-#include <inttypes.h>
+#include <cinttypes>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>

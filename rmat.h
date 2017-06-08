@@ -1,6 +1,6 @@
 
 // Adapted from the stinger project <https://github.com/stingergraph/stinger> rmat.c
-#include <inttypes.h>
+#include <cinttypes>
 #include <random>
 #include "prng_engine.hpp"
 

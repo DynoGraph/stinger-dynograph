@@ -12,12 +12,16 @@
 
 #ifdef __cplusplus
 extern "C" {
+#include <cinttypes>
+#include <cstddef>
+#else
+#include <inttypes.h>
+#include <stddef.h>
 #endif
+
 
 // Stores edge counts for each thread
 // Do not access directly, instead use macros below
-#include <inttypes.h>
-#include <stddef.h>
 extern uint64_t* dynograph_edge_count_num_traversed_edges;
 
 #if defined(_OPENMP)
