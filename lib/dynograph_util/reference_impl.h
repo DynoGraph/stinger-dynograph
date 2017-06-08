@@ -3,7 +3,7 @@
 
 #include "dynamic_graph.h"
 #include <map>
-#include <inttypes.h>
+#include <cinttypes>
 
 /**
  * Reference implementation of the DynoGraph::DynamicGraph interface

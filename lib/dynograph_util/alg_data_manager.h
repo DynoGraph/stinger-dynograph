@@ -3,7 +3,7 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <inttypes.h>
+#include <cinttypes>
 #include "pvector.h"
 #include "range.h"
 
