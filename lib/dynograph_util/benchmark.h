@@ -107,7 +107,7 @@ public:
                         if (args.sources_path.empty()) {
                             // Pick source vertex(s)
                             int64_t num_sources;
-                            if (alg_name == "bfs" || alg_name == "sssp") { num_sources = 1; }
+                            if (alg_name == "bfs" || alg_name == "sssp") { num_sources = 64; }
                             else if (alg_name == "bc") { num_sources = 128; }
                             else { num_sources = 0; }
                             sources = graph.get_high_degree_vertices(num_sources);
