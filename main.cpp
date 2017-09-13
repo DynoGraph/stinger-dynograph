@@ -13,11 +13,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <dynograph_util.h>
+#include <dynograph_util/benchmark.h>
 #include "stinger_server.h"
 
 int main(int argc, char **argv)
 {
-    DynoGraph::run<StingerServer>(argc, argv);
+    DynoGraph::Benchmark::run<StingerServer>(argc, argv);
     return 0;
 }

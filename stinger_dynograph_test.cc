@@ -1,5 +1,6 @@
 #include "stinger_server.h"
-#include <dynograph_impl_test.h>
+#include <dynograph_util/dynograph_impl_test.h>
+#include <dynograph_util/edgelist_dataset.h>
 
 INSTANTIATE_TYPED_TEST_CASE_P(STINGER_DYNOGRAPH, ImplTest, StingerServer);
 INSTANTIATE_TYPED_TEST_CASE_P(STINGER_DYNOGRAPH, CompareWithReferenceTest, StingerServer);
@@ -7,7 +8,7 @@ INSTANTIATE_TYPED_TEST_CASE_P(STINGER_DYNOGRAPH, CompareWithReferenceTest, Sting
 TEST(STINGER_DYNOGRAPH, SetInitialEdgesTest)
 {
     DynoGraph::Args args = {1, "dynograph_util/data/worldcup-10K.graph.bin", 10, {}, Args::SORT_MODE::SNAPSHOT, 1.0, 1};
-    DynoGraph::Dataset dataset(args);
+    DynoGraph::EdgeListDataset dataset(args);
     auto batch = dataset.getBatch(0);
 
 

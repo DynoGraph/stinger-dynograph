@@ -5,13 +5,15 @@
 #include <iomanip>
 #include <numeric>
 
+#include <dynograph_util/logger.h>
+
 extern "C" {
 #include <stinger_core/stinger.h>
 #include <stinger_core/core_util.h>
 }
 #include <stinger_net/stinger_alg.h>
 #include <stinger_core/stinger_batch_insert.h>
-#include <hooks/dynograph_edge_count.h>
+#include <dynograph_edge_count.h>
 
 using std::cerr;
 
@@ -24,7 +26,7 @@ stinger_config_t generate_stinger_config(int64_t nv) {
 
     // Start with size we will try to fill
     // Scaled by 75% because that's what stinger_new_full does
-    uint64_t sz = ((uint64_t)stinger_max_memsize() * 3)/4;
+    int64_t sz = ((int64_t)stinger_max_memsize() * 3)/4;
 
     // Subtract storage for vertices
     sz -= stinger_vertices_size(nv);
@@ -39,6 +41,13 @@ stinger_config_t generate_stinger_config(int64_t nv) {
     // Leave room for the edge block tracking structures
     sz -= sizeof(stinger_ebpool);
     sz -= sizeof(stinger_etype_array);
+
+    if (sz < 0) {
+        DynoGraph::Logger &logger = DynoGraph::Logger::get_instance();
+        logger << "Not enough memory to allocate a STINGER data structure with " << nv << " vertices\n";
+        logger << "Need at least " << -sz << " more bytes (not counting edge blocks).\n";
+        DynoGraph::die();
+    }
 
     // Finally, calculate how much room is left for the edge blocks themselves
     int64_t nebs = sz / (sizeof(stinger_eb) + sizeof(eb_index_t));
@@ -95,8 +104,6 @@ StingerGraph::insert_using_stinger_batch(const DynoGraph::Batch& batch)
         const DynoGraph::Edge &e = *(batch.begin() + i);
         updates[i] = EdgeAdapter(e);
     }
-    Hooks &hooks = Hooks::getInstance();
-    DYNOGRAPH_EDGE_COUNT_TRAVERSE_MULTIPLE_EDGES(updates.size());
     if (batch.is_directed())
     { stinger_batch_incr_edges<EdgeAdapter>(S, updates.begin(), updates.end()); }
     else
@@ -143,21 +150,14 @@ StingerGraph::insert_using_set_initial_edges(const DynoGraph::Batch& batch)
 {
     using std::vector;
 
-    // Assert edge list is sorted and no duplicates exist
-    assert(std::is_sorted(batch.begin(), batch.end()));
+    // Assert no duplicates exist in edge list
     assert(std::adjacent_find(batch.begin(), batch.end(),
         [](const DynoGraph::Edge &a, const DynoGraph::Edge &b) { return a.src == b.src && a.dst == b.dst; }
     ) == batch.end());
     assert(batch.size() > 0);
 
     // Find the largest vertex ID
-    int64_t max_src = std::max_element(batch.begin(), batch.end(),
-        [](const DynoGraph::Edge& a, const DynoGraph::Edge& b) { return a.src < b.src; }
-    )->src;
-    int64_t max_dst = std::max_element(batch.begin(), batch.end(),
-        [](const DynoGraph::Edge& a, const DynoGraph::Edge& b) { return a.dst < b.dst; }
-    )->dst;
-    int64_t nv = std::max(max_src, max_dst) + 1;
+    int64_t nv = batch.max_vertex_id() + 1;
 
     /**
      * stinger stores every edge in two places: an out-edge at the source vertex, and
@@ -272,13 +272,17 @@ StingerGraph::insert_using_set_initial_edges(const DynoGraph::Batch& batch)
 }
 
 void
-StingerGraph::insert_using_parallel_for(const DynoGraph::Batch& batch)
+StingerGraph::insert_using_parallel_for_dynamic_schedule(const DynoGraph::Batch& batch)
 {
     // Insert the edges in parallel
     const int64_t type = 0;
     const bool directed = batch.is_directed();
 
-    int64_t chunksize = 8192;
+    // Some inserts take longer than others, depending on vertex degree
+    // Too many chunks per thread -> synchronization overhead at the work queue
+    // Too few chunks per thread -> load imbalance (waiting for a few slow threads)
+    int64_t chunks_per_thread = 8;
+    int64_t chunksize = std::max(1UL, batch.size() / (omp_get_max_threads()*chunks_per_thread));
     OMP("omp parallel for schedule(dynamic, chunksize)")
     for (auto e = batch.begin(); e < batch.end(); ++e)
     {
@@ -288,7 +292,25 @@ StingerGraph::insert_using_parallel_for(const DynoGraph::Batch& batch)
         } else { // undirected
             stinger_incr_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
         }
-        DYNOGRAPH_EDGE_COUNT_TRAVERSE_EDGE();
+    }
+}
+
+void
+StingerGraph::insert_using_parallel_for_static_schedule(const DynoGraph::Batch& batch)
+{
+    // Insert the edges in parallel
+    const int64_t type = 0;
+    const bool directed = batch.is_directed();
+
+    OMP("omp parallel for schedule(static)")
+    for (auto e = batch.begin(); e < batch.end(); ++e)
+    {
+        if (directed)
+        {
+            stinger_incr_edge     (S, type, e->src, e->dst, e->weight, e->timestamp);
+        } else { // undirected
+            stinger_incr_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
+        }
     }
 }
 
@@ -296,17 +318,10 @@ StingerGraph::insert_using_parallel_for(const DynoGraph::Batch& batch)
 void
 StingerGraph::deleteOlderThan(int64_t threshold)
 {
-    Hooks &hooks = Hooks::getInstance();
     STINGER_RAW_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S)
     {
         DYNOGRAPH_EDGE_COUNT_TRAVERSE_EDGE();
         if (STINGER_EDGE_TIME_RECENT < threshold) {
-            // Record the deletion
-            stinger_edge_update u;
-            u.source = STINGER_EDGE_SOURCE;
-            u.destination = STINGER_EDGE_DEST;
-            u.weight = STINGER_EDGE_WEIGHT;
-            u.time = STINGER_EDGE_TIME_RECENT;
             // Delete the edge
             update_edge_data_and_direction (S, current_eb__, i__, ~STINGER_EDGE_DEST, 0, 0, STINGER_EDGE_DIRECTION, EDGE_WEIGHT_SET);
         }

@@ -5,7 +5,8 @@
 #include <string>
 #include <stdint.h>
 
-#include <dynograph_util.h>
+#include <dynograph_util/args.h>
+#include <dynograph_util/dynamic_graph.h>
 
 #include "stinger_graph.h"
 #include "stinger_algorithm.h"
@@ -24,16 +25,18 @@ private:
 public:
 
     StingerServer(const DynoGraph::Args& args, int64_t max_nv);
+    StingerServer(const DynoGraph::Args &args, int64_t max_vertex_id, const DynoGraph::Batch &batch);
 
     static std::vector<std::string> get_supported_algs();
     void before_batch(const DynoGraph::Batch& batch, const int64_t threshold);
     void insert_batch(const DynoGraph::Batch & b);
     void delete_edges_older_than(int64_t threshold);
-    void update_alg(const std::string &name, const std::vector<int64_t> &sources);
+    void update_alg(const std::string &name, const std::vector<int64_t> &sources, DynoGraph::Range<int64_t> data);
 
     int64_t get_out_degree(int64_t vertex_id) const;
     int64_t get_num_vertices() const;
     int64_t get_num_edges() const ;
+    std::vector<int64_t> get_high_degree_vertices(int64_t n) const;
 
     struct DistributionSummary
     {

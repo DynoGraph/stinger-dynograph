@@ -9,7 +9,7 @@
 #include <cmath>
 
 #include <hooks.h>
-#include <dynograph_util.h>
+#include <dynograph_util/logger.h>
 #include <stinger_core/stinger_atomics.h>
 #include "stinger_server.h"
 
@@ -41,6 +41,26 @@ StingerServer::StingerServer(const DynoGraph::Args& args, int64_t max_vertex_id)
     onGraphChange();
 }
 
+StingerServer::StingerServer(const DynoGraph::Args& args, int64_t max_vertex_id, const DynoGraph::Batch& batch)
+: DynoGraph::DynamicGraph(args, max_vertex_id)
+, graph(max_vertex_id + 1)
+, max_active_vertex(0)
+{
+    graph.insert_using_set_initial_edges(batch);
+    graph.printSize();
+
+    algs.reserve(args.alg_names.size());
+    // Register algorithms to run
+    for (string algName : args.alg_names)
+    {
+        DynoGraph::Logger::get_instance() << "Initializing " << algName << "...\n";
+        algs.emplace_back(graph.S, algName);
+        algs.back().onInit();
+    }
+
+    onGraphChange();
+}
+
 vector<string>
 StingerServer::get_supported_algs()
 {
@@ -50,6 +70,7 @@ StingerServer::get_supported_algs()
 void
 StingerServer::before_batch(const DynoGraph::Batch& batch, int64_t threshold)
 {
+#ifdef STINGER_DYNOGRAPH_RECORD_GRAPH_STATS
     // Compute degree distributions
     Hooks &hooks = Hooks::getInstance();
     DegreeStats batch_degree_dist = compute_degree_distribution(batch);
@@ -62,7 +83,7 @@ StingerServer::before_batch(const DynoGraph::Batch& batch, int64_t threshold)
     hooks.set_stat("affected_degree_max", affected_graph_dist.both.max);
     hooks.set_stat("affected_degree_variance", affected_graph_dist.both.variance);
     hooks.set_stat("affected_degree_skew", affected_graph_dist.both.skew);
-
+#endif
     assert(batch.is_directed());
     // Store the insertions in the format that the algorithms expect
     int64_t num_insertions = batch.size();
@@ -122,7 +143,9 @@ StingerServer::onGraphChange()
     {
         alg.observeVertexCount(max_active_vertex);
     }
+#ifdef STINGER_DYNOGRAPH_RECORD_GRAPH_STATS
     recordGraphStats();
+#endif
 }
 
 void
@@ -155,8 +178,10 @@ StingerServer::insert_batch(const DynoGraph::Batch & b)
     } else {
 #ifdef USE_STINGER_BATCH_INSERT
         graph.insert_using_stinger_batch(b);
+#elif defined(USE_DYNAMIC_SCHEDULE_FOR_INSERT)
+        graph.insert_using_parallel_for_dynamic_schedule(b);
 #else
-        graph.insert_using_parallel_for(b);
+        graph.insert_using_parallel_for_static_schedule(b);
 #endif
     }
     onGraphChange();
@@ -169,16 +194,23 @@ StingerServer::delete_edges_older_than(int64_t threshold) {
 }
 
 void
-StingerServer::update_alg(const string& name, const std::vector<int64_t> &sources)
+StingerServer::update_alg(const string& name, const std::vector<int64_t> &sources, DynoGraph::Range<int64_t> data)
 {
+    // Look up pointer to implementation
     auto alg = std::find_if(algs.begin(), algs.end(),
         [name](const StingerAlgorithm &alg) { return alg.name == name; });
     if (alg == algs.end()) {
         DynoGraph::Logger::get_instance() << "Algorithm " << name << " was never initialized\n";
         exit(-1);
     }
+    // Pass source vertices (for algs that use it)
     alg->setSources(sources);
+    // Set results from previous run (for incremental algs)
+    alg->setData(data);
+    // Run the algorithm
     alg->onPost();
+    // Copy result data to buffer
+    alg->getData(data);
 }
 
 int64_t
@@ -197,6 +229,29 @@ int64_t
 StingerServer::get_num_edges() const
 {
     return stinger_edges_up_to(graph.S, max_active_vertex+1);
+}
+
+std::vector<int64_t>
+StingerServer::get_high_degree_vertices(int64_t n) const
+{
+    using DynoGraph::vertex_degree;
+    int64_t nv = this->get_num_vertices();
+    assert(n < nv);
+
+    std::vector<vertex_degree> degrees(nv);
+    #pragma omp parallel for
+    for (int64_t i = 0; i < nv; ++i) {
+        int64_t degree = stinger_outdegree_get(graph.S, i);
+        degrees[i] = vertex_degree(i, degree);
+    }
+    // order by degree descending, vertex_id ascending
+    std::sort(degrees.begin(), degrees.end());
+
+    degrees.erase(degrees.begin(), degrees.end() - n);
+    std::vector<int64_t> ids(degrees.size());
+    std::transform(degrees.begin(), degrees.end(), ids.begin(),
+        [](const vertex_degree &d) { return d.vertex_id; });
+    return ids;
 }
 
 /**
